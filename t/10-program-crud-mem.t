@@ -19,11 +19,11 @@ my $list;
 $list = $storage->retrieve_all();
 is_deeply $list, [ ];
 
-$o = Safetynet::Program->new( name => 'perl', executable => $^X );
+$o = Safetynet::Program->new( name => 'perl', command => $^X );
 ok defined $o;
 isa_ok $o, 'Safetynet::Program';
 is $o->name, 'perl';
-is $o->executable, $^X;
+is $o->command, $^X;
 
 # retrieve all
 $list = $storage->retrieve_all();
@@ -36,7 +36,7 @@ dies_ok {
 } 'duplicate';
 
 $list = $storage->retrieve_all();
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', executable => $^X ) ];
+is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $o = $storage->retrieve( 'non-existent-name' );
 ok not defined $o;
@@ -45,7 +45,7 @@ $o = $storage->retrieve( 'perl' );
 ok defined $o;
 isa_ok $o, 'Safetynet::Program';
 is $o->name, 'perl';
-is $o->executable, $^X;
+is $o->command, $^X;
 
 
 # remove
@@ -53,13 +53,13 @@ $x = $storage->remove( undef );
 is $x, undef;
 
 $list = $storage->retrieve_all(); # check nothing was deleted
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', executable => $^X ) ];
+is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $x = $storage->remove( 'non-existent-name-here' );
 is $x, undef;
 
 $list = $storage->retrieve_all(); # check nothing was deleted
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', executable => $^X ) ];
+is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $x = $storage->remove( 'perl' );
 $list = $storage->retrieve_all();
@@ -67,13 +67,13 @@ is_deeply $list, [ ], 'remove success';
 
 # add more
 {
-    $storage->add( Safetynet::Program->new( name => 'echo', executable => '/bin/echo' ) );
-    $storage->add( Safetynet::Program->new( name => 'cat', executable => '/bin/cat' ) );
+    $storage->add( Safetynet::Program->new( name => 'echo', command => '/bin/echo' ) );
+    $storage->add( Safetynet::Program->new( name => 'cat', command => '/bin/cat' ) );
 
     $list = $storage->retrieve_all();
     is_deeply $list, [ 
-        Safetynet::Program->new( name => 'cat', executable => '/bin/cat' ),
-        Safetynet::Program->new( name => 'echo', executable => '/bin/echo' ),
+        Safetynet::Program->new( name => 'cat', command => '/bin/cat' ),
+        Safetynet::Program->new( name => 'echo', command => '/bin/echo' ),
     ];
 }
 

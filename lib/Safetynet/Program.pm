@@ -11,10 +11,38 @@ has 'name' => (
     required    => 1,
 );
 
-has 'executable' => (
+has 'command' => (
     is          => 'rw',
     isa         => 'Str',
     required    => 1,
+);
+
+has 'autostart' => (
+    is          => 'rw',
+    isa         => 'Bool',
+    required    => 1,
+    default     => 0,
+);
+
+has 'autorestart' => (
+    is          => 'rw',
+    isa         => 'Bool',
+    required    => 1,
+    default     => 0,
+);
+
+has 'autorestart_wait' => (
+    is          => 'rw',
+    isa         => 'Int',
+    required    => 1,
+    default     => 10,
+);
+
+has 'priority' => (
+    is          => 'rw',
+    isa         => 'Int',
+    required    => 1,
+    default     => 999,
 );
 
 no Moose;

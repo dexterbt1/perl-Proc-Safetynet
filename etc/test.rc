@@ -1,0 +1,5 @@
+id = test
+programs = /home/dexter/svn/neo-users/dtady/Safetynet/etc/test.programs
+<unix_server>
+    socket      = /tmp/safetynet.sock
+</unix_server>

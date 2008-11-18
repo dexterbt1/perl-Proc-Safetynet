@@ -1,0 +1,16 @@
+[
+   {
+      "priority" : "999",
+      "autostart" : 0,
+      "autorestart" : 0,
+      "name" : "cat",
+      "command" : "/bin/cat"
+   },
+   {
+      "priority" : "999",
+      "autostart" : 0,
+      "autorestart" : 0,
+      "name" : "echo",
+      "command" : "/bin/echo"
+   }
+]
