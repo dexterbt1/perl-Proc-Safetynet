@@ -8,6 +8,7 @@ our @ISA = qw();
 
 our $VERSION = '0.01';
 
+use Safetynet::Monitor;
 use Safetynet::Program;
 
 

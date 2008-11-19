@@ -32,13 +32,13 @@ my $monitor = Safetynet::Monitor->spawn(
     alias           => q{MONITOR},
     programs        => $programs,
 );
-if (exists $config->{unix_server}) {
-    Safetynet::UnixServer->spawn(
-        alias       => q{UNIXSERVER},
-        monitor     => q{MONITOR},
-        %{ $config->{unix_server} },
-    );
-}
+#if (exists $config->{unix_server}) {
+#    Safetynet::UnixServer->spawn(
+#        alias       => q{UNIXSERVER},
+#        monitor     => q{MONITOR},
+#        %{ $config->{unix_server} },
+#    );
+#}
 
 POE::Kernel->run();
 
