@@ -9,10 +9,12 @@ use Data::Dumper;
 use POE::Kernel;
 use POE::Session;
 
+use Safetynet::Program;
+
 sub initialize {
     my $self        = $_[OBJECT];
     # add states
-    $_[KERNEL]->state( 'program_list'                   => $self );
+    $_[KERNEL]->state( 'program'                        => $self );
     # verify programs
     {
         (defined $self->options->{programs})
@@ -24,17 +26,53 @@ sub initialize {
     }
 }
 
+my $program_cmds = {
+    'list'          => sub { # list( $self )
+        return $_[0]->{programs}->retrieve_all;
+    }, 
+    'add'           => sub { # add( $self, $param )
+        my $o = 0;
+        eval {
+            $o = $_[0]->{programs}->add( Safetynet::Program->new($_[1]) ) ? 1 : 0;
+        };
+        return $o;
+    },
+    'remove'        => sub {
+        my $o = undef;
+        eval {
+            $o = $_[0]->{programs}->remove( $_[1] ) ? 1 : 0;
+        };
+        return $o;
+    },
+    'settings'      => sub {
+        my $o = undef;
+        eval {
+            $o = $_[0]->{programs}->retrieve( $_[1] );
+        };
+        return $o;
+        
+    },
+};
 
-sub program_list {
+sub program {
     my $self        = $_[OBJECT];
     my $postback    = $_[ARG0];
     my $stack       = $_[ARG1];
-    my $list        = $self->{programs}->retrieve_all;
+    my $command     = $_[ARG2] || '';
+    my $param       = $_[ARG3];
+    my $result      = undef;
+    if (exists $program_cmds->{$command}) {
+        $result     = { 'result' => $program_cmds->{$command}->($self, $param) };
+    }
+    else {
+        $result     = { 'error' => 'unknown command' };
+    }
+    # do postback
     $_[KERNEL]->post( 
         $postback->[0], 
         $postback->[1], 
         $stack,
-        $list
+        $result,
     ) or confess $_[STATE] . " state: unable to postback";
 }
 

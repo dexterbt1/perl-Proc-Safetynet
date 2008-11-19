@@ -29,9 +29,13 @@ process management
     safetynetd v0.03 at hostname (ip)
 
 client> program list
-    activemq
-    msp01
-    mqbridged
+    {
+        'result' : [
+            'activemq',
+            'msp01',
+            'mqbridged'
+        ]
+    }
 
 client> program settings activemq
     {
@@ -41,12 +45,15 @@ client> program settings activemq
     }
 
 client> unknowncommandheretypoxxx
+    
     !error command "..."
 
 client> program status-all
-    activemq        running
-    msp01           dead (scheduled for restart)
-    mqbridged       running
+    [
+        {
+        activemq        running
+        msp01           dead (scheduled for restart)
+        mqbridged       running
 
 client> program update activemq { "autorestart" : 0 }
     unable to update 
