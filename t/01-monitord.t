@@ -40,6 +40,7 @@ my @api_tests = (
     [ 'program', 'start', 'unknown', { result => 0 } ],
     [ 'program', 'start', 'perl-1', { result => 0 } ],
     [ 'program', 'start', 'perl-2', { result => 1 } ],
+    [ 'program', 'stop', 'perl-2', { result => 1 } ],
         
 );
 my @api_results = ();

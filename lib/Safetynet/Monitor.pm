@@ -112,6 +112,13 @@ my $program_cmds = {
         }
         return $o;
     },
+    'stop'         => sub { # stop( $self, $program_name )
+        my $o = 0;
+        if (exists $_[0]->{monitored}->{$_[1]}) {
+            $o = $_[0]->monitor_stop_program( $_[1] );
+        }
+        return $o;
+    },
 };
 
 # api: program command processing
@@ -208,6 +215,21 @@ sub monitor_start_program { # non-POE
     }
     return $ret;
 }
+
+
+# return 1 if success, 0 if failure
+sub monitor_stop_program { # non-POE
+    my $self = shift;
+    my $name = shift;
+    my $ret  = 0;
+    if (exists $self->{monitored}->{$name}) {
+        my $ps = $self->{monitored}->{$name};
+        if ($ps->is_running) {
+            kill 'TERM', $ps->pid;
+        }
+    }
+}
+
 
 
 1;
