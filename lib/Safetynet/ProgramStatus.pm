@@ -15,15 +15,19 @@ has 'is_running' => (
 has 'started_since' => (
     is          => 'rw',
     isa         => 'Int',
-    required    => 1,
-    default     => sub { time(); },
+    required    => 0,
+);
+
+has 'stopped_since' => (
+    is          => 'rw',
+    isa         => 'Int',
+    required    => 0,
 );
 
 has 'pid'       => (
     is          => 'rw',
     isa         => 'Int',
-    required    => 1,
-    default     => 0,
+    required    => 0,
 );
 
 no Moose;

@@ -12,6 +12,7 @@ BEGIN {
 
 my @api_tests = (
     # [ 'namespace', 'command', 'param', 'expected_result' ]
+    # program management
     [ 'program', 'unknown-command-here', undef,                         { 'error' => 'unknown command' } ],
     [ 'program', 'list', undef,                                         { result => [ ] } ],
     [ 'program', 'add', { 'name' => 'perl-1', 'command' => $^X, },      { 'result' => 1 }  ],
@@ -33,6 +34,13 @@ my @api_tests = (
         { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
     [ 'program', 'settings', 'perl-1', 
         { result => undef } ],
+    # process management
+    [ 'program', 'status', 'perl-2',
+        { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
+    [ 'program', 'start', 'unknown', { result => 0 } ],
+    [ 'program', 'start', 'perl-1', { result => 0 } ],
+    [ 'program', 'start', 'perl-2', { result => 1 } ],
+        
 );
 my @api_results = ();
 my @api_stack   = ();
@@ -45,9 +53,10 @@ my $programs = Safetynet::Program::Storage::TextFile->new(
 my $MONITOR = q{MONITOR};
 my $SHELL   = q{SHELL};
 
-my $monitor =Safetynet::Monitor->spawn(
+my $monitor = Safetynet::Monitor->spawn(
     alias       => $MONITOR,
     programs    => $programs,
+    binpath     => '/bin:/usr/bin',
 );
 
 # shell
@@ -74,12 +83,13 @@ POE::Session->create(
         api_test_result => sub {
             $_[KERNEL]->delay( 'timeout' );
             my $stack = $_[ARG0];
+            my $t = pop @$stack;
             my $exp_stack = shift @api_stack;
             is_deeply $stack, $exp_stack, 'stack ok';
             my $result = $_[ARG1];
             my $exp_result = shift @api_results;
             is_deeply $result, $exp_result, 'result ok';
-            diag Dumper( $result );
+            diag Dumper( [ $t, $result ] );
             $_[KERNEL]->yield( 'api_test' );
         },
         timeout => sub {

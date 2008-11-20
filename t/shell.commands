@@ -23,6 +23,7 @@ process management
     program status <name>
     program start <name>
     program stop <name>
+    program force-stop <name>
 
 =================================================
 
