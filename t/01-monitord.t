@@ -11,36 +11,30 @@ BEGIN {
 }
 
 my @api_tests = (
-    # [ 'namespace', 'command', 'param', 'expected_result' ]
+    # [ 'command', 'param', 'expected_result' ]
+
     # program management
-    [ 'program', 'unknown-command-here', undef,                         { 'error' => 'unknown command' } ],
-    [ 'program', 'list', undef,                                         { result => [ ] } ],
-    [ 'program', 'add', { 'name' => 'perl-1', 'command' => $^X, },      { 'result' => 1 }  ],
-    [ 'program', 'list', undef,                                         
-        { result => [ Safetynet::Program->new({ name => 'perl-1', 'command' => $^X })] } ],
-    [ 'program', 'add', { 'name' => 'perl-2', 'command' => $^X, },      { 'result' => 1 }  ],
-    [ 'program', 'list', undef,                                         
+    [ 'list_programs', undef,                                   { result => [ ] } ],
+    [ 'add_program', { 'name' => 'perl-1', 'command' => $^X, }, { result => 1 }  ],
+    [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-1', 'command' => $^X })] } ],
+    [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 1 }  ],
+    [ 'list_programs', undef,                                         
         { result => [ 
                 Safetynet::Program->new({ name => 'perl-1', 'command' => $^X }),
                 Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }),
             ] } ],
-    [ 'program', 'add', { 'name' => 'perl-2', 'command' => $^X, },      { 'result' => 0 }  ],
-    [ 'program', 'remove', 'perl-1',   { 'result' => 1 }  ],
-    [ 'program', 'list', undef,                                         
-        { result => [ 
-                Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }),
-            ] } ],
-    [ 'program', 'settings', 'perl-2', 
-        { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
-    [ 'program', 'settings', 'perl-1', 
-        { result => undef } ],
+    [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 0 }  ],
+    [ 'remove_program', 'perl-1',                               { result => 1 }  ],
+    [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }), ] } ],
+    [ 'get_program', 'perl-2',                                  { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
+    [ 'get_program', 'perl-1',                                  { result => undef } ],
+
     # process management
-    [ 'program', 'status', 'perl-2',
-        { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
-    [ 'program', 'start', 'unknown', { result => 0 } ],
-    [ 'program', 'start', 'perl-1', { result => 0 } ],
-    [ 'program', 'start', 'perl-2', { result => 1 } ],
-    [ 'program', 'stop', 'perl-2', { result => 1 } ],
+    [ 'view_status', 'perl-2',                                   { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
+    [ 'start_program', 'unknown',                               { result => 0 } ],
+    [ 'start_program', 'perl-1',                                { result => 0 } ],
+    [ 'start_program', 'perl-2',                                { result => 1 } ],
+    [ 'stop_program', 'perl-2',                                 { result => 1 } ],
         
 );
 my @api_results = ();
@@ -70,12 +64,12 @@ POE::Session->create(
         api_test => sub {
             my $t = shift @api_tests;
             if (defined $t) {
-                my ($ns, $cmd, $param, $er) = @$t;
+                my ($cmd, $param, $er) = @$t;
                 my $stack = [ $t ];
                 push @api_results, $er;
                 push @api_stack, $stack;
                 $_[KERNEL]->delay( 'timeout' => 30 );
-                $monitor->yield( $ns, [ $SHELL, 'api_test_result' ], $stack, $cmd, $param );
+                $monitor->yield( $cmd, [ $SHELL, 'api_test_result' ], $stack, $param );
             }
             else {
                 $_[KERNEL]->yield( 'shutdown' );
