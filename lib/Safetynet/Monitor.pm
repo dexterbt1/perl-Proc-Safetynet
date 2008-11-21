@@ -28,6 +28,7 @@ sub initialize {
     $_[KERNEL]->state( 'stop_program'                   => $self );
     $_[KERNEL]->state( 'stop_program_timeout'           => $self );
     $_[KERNEL]->state( 'sig_CHLD'                       => $self );
+    $_[KERNEL]->state( 'autorestarted'                  => $self );
     # verify programs
     {
         (defined $self->options->{programs})
@@ -110,6 +111,20 @@ sub sig_CHLD {
         $_[KERNEL]->yield( 'do_postback', $pb->[0], $pb->[1], 1 );
         $_[KERNEL]->delay( 'stop_program_timeout' ); # cancel
     }
+    # schedule for restart, if applicable
+    my $prog = $self->{programs}->retrieve( $program_name );
+    if (defined $prog) {
+        if ($prog->autorestart()) {
+            $_[KERNEL]->delay_add( 'start_program' => $prog->autorestart_wait(), [ $self->alias, 'autorestarted'], [ $prog, $exit_val ], $program_name );
+        }
+    }
+}
+
+
+sub autorestarted {
+    my $stack = $_[ARG0];
+    my ($p, $exit_val) = @$stack;
+    # nop for now ... 
 }
 
 
