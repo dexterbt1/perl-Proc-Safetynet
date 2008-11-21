@@ -30,11 +30,19 @@ my @api_tests = (
     [ 'get_program', 'perl-1',                                  { result => undef } ],
 
     # process management
-    [ 'view_status', 'perl-2',                                   { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
-    [ 'start_program', 'unknown',                               { result => 0 } ],
-    [ 'start_program', 'perl-1',                                { result => 0 } ],
+    [ 'view_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
+    [ 'start_program', 'unknown',                               { result => 0 } ], # unknown
+    [ 'stop_program', 'perl-2',                                 { result => 0 } ], # not yet started
+    [ 'start_program', 'perl-1',                                { result => 0 } ], # deleted a while ago
     [ 'start_program', 'perl-2',                                { result => 1 } ],
+    [ 'start_program', 'perl-2',                                { result => 0 } ], # already started
     [ 'stop_program', 'perl-2',                                 { result => 1 } ],
+    [ 'stop_program', 'perl-2',                                 { result => 0 } ], # already stopped 
+    # more ...
+    [ 'add_program', { 'name' => 'perl-3', 'command' => $^X, }, { result => 1 }  ],
+    [ 'start_program', 'perl-3',                                { result => 1 } ],
+    [ 'remove_program', 'perl-3',                               { result => 0 } ], # running programs cannot be removed
+    [ 'stop_program', 'perl-3',                                 { result => 1 } ], # running programs cannot be removed
         
 );
 my @api_results = ();
@@ -70,6 +78,7 @@ POE::Session->create(
                 push @api_stack, $stack;
                 $_[KERNEL]->delay( 'timeout' => 30 );
                 $monitor->yield( $cmd, [ $SHELL, 'api_test_result' ], $stack, $param );
+                diag "requested $cmd";
             }
             else {
                 $_[KERNEL]->yield( 'shutdown' );

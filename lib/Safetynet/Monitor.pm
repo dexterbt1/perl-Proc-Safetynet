@@ -25,6 +25,8 @@ sub initialize {
     $_[KERNEL]->state( 'view_status'                    => $self );
     $_[KERNEL]->state( 'start_program'                  => $self );
     $_[KERNEL]->state( 'stop_program'                   => $self );
+    $_[KERNEL]->state( 'stop_program_timeout'           => $self );
+    $_[KERNEL]->state( 'sig_CHLD'                       => $self );
     # verify programs
     {
         (defined $self->options->{programs})
@@ -53,6 +55,7 @@ sub initialize {
     }
     # start monitoring
     $self->{monitored} = { };
+    $self->{killed} = { };
     foreach my $p (@{ $self->{programs}->retrieve_all() }) {
         $self->monitor_add_program( $p );
     }
@@ -68,6 +71,34 @@ sub heartbeat {
 sub start_work {
     my $self        = $_[OBJECT];
     # do nothing
+}
+
+
+# sigCHLD handler
+sub sig_CHLD {
+    my $self        = $_[OBJECT];
+    my $name        = $_[ARG0];
+    my $pid         = $_[ARG1];
+    my $exit_val    = $_[ARG2];
+    ##print STDERR "SIGCHLD: $name, $pid, $exit_val\n";
+    # clear status
+    my $program_name = undef;
+    foreach my $ps_key (keys %{ $self->{monitored} }) {
+        my $ps = $self->{monitored}->{$ps_key};
+        if ($ps->pid eq $pid) {
+            delete $ps->{pid};
+            $ps->stopped_since( time() );
+            $ps->is_running( 0 );
+            $program_name = $ps_key;
+            last;
+        }
+    }
+    # postback if killed
+    if (defined $program_name) {
+        my $pb = delete $self->{killed}->{$program_name};
+        $_[KERNEL]->yield( 'do_postback', $pb->[0], $pb->[1], 1 );
+        $_[KERNEL]->delay( 'stop_program_timeout' ); # cancel
+    }
 }
 
 
@@ -139,19 +170,81 @@ sub view_status {
 sub start_program { 
     my $program_name = $_[ARG2];
     my $o = 0;
-    if (exists $_[OBJECT]->{monitored}->{$program_name}) {
-        $o = $_[OBJECT]->monitor_start_program( $program_name );
+    # TODO: don't start if already started
+    SPAWN: {
+        if (exists $_[OBJECT]->{monitored}->{$program_name}) {
+            my $ps = $_[OBJECT]->{monitored}->{$program_name};
+            if ($ps->is_running) {
+                # already running
+                last SPAWN;
+            }
+            my $p = $_[OBJECT]->{programs}->retrieve($program_name);
+            my $command = $p->command;
+            # run
+            my $pid = fork;
+            if (defined $pid) {
+                if ($pid == 0) {
+                    # child here ... a point of no return
+                    # TODO: redirect STDERR, STDOUT ...
+                    # TODO: apply uid/gid changes 
+                    # TODO: apply chroot
+                    # assume command was already sanitized
+                    my ($cmd) = ($command =~ /^(.*)$/);
+                    exec $cmd
+                        or die "cannot exec command [$cmd]";
+                    exit(100);
+                }
+                else {
+                    # parent here
+                    $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
+                    $ps->is_running( 1 );
+                    $ps->pid( $pid );
+                    $ps->started_since( time() );
+                    $o = 1;
+                }
+            }
+            # else: undef fork means failed start
+        }
     }
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
 }
 
 sub stop_program {
     my $program_name = $_[ARG2];
-    my $o = 0;
     if (exists $_[OBJECT]->{monitored}->{$program_name}) {
-        $o = $_[OBJECT]->monitor_stop_program( $program_name );
+        my $ps = $_[OBJECT]->{monitored}->{$program_name};
+        if ( ($ps->is_running) and (not exists $_[OBJECT]->{killed}->{$program_name}) ) {
+            # defer postback until either SIGCHLD or time out waiting
+            $_[OBJECT]->{killed}->{$program_name} = [ $_[ARG0], $_[ARG1], ];
+            # kill the process
+            my $o = kill 'TERM', $ps->pid;
+            if ($o > 0) {
+                # okay, we've signalled the process, we now have to wait for SIGCHLD to occur
+                #   or timeout
+                $_[KERNEL]->delay( 'stop_program_timeout' => 10, @_[ARG0, ARG1], $program_name );
+            }
+            else {
+                # signalling did not work this time
+                $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+            }
+        }
+        else {
+            # not running or already issued a kill
+            $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+        }
     }
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    else {
+        # non-existent
+        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+    }
+}
+
+sub stop_program_timeout {
+    my $program_name = $_[ARG2];
+    if (exists $_[OBJECT]->{killed}->{$program_name}) {
+        delete $_[OBJECT]->{killed}->{$program_name};
+        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+    }
 }
 
 
@@ -187,58 +280,6 @@ sub monitor_remove_program { # non-POE
         $ret = 1;
     }
     return $ret;
-}
-
-
-# return 1 if success, 0 if failure
-sub monitor_start_program { # non-POE
-    my $self = shift;
-    my $name = shift;
-    my $ret  = 0;
-    # TODO: don't start if already started
-    if (exists $self->{monitored}->{$name}) {
-        my $p = $self->{programs}->retrieve($name);
-        my $command = $p->command;
-        # run
-        my $pid = fork;
-        if (defined $pid) {
-            if ($pid == 0) {
-                # child here ... a point of no return
-                # TODO: redirect STDERR, STDOUT ...
-                # TODO: apply uid/gid changes 
-                # TODO: apply chroot
-                # assume command was already sanitized
-                my ($cmd) = ($command =~ /^(.*)$/);
-                exec $cmd
-                    or die "cannot exec command [$cmd]";
-                exit(100);
-            }
-            else {
-                # parent here
-                my $ps = $self->{monitored}->{$name};
-                $ps->is_running( 1 );
-                $ps->pid( $pid );
-                $ps->started_since( time() );
-                $ret = 1;
-            }
-        }
-        # else: undef fork means failed start
-    }
-    return $ret;
-}
-
-
-# return 1 if success, 0 if failure
-sub monitor_stop_program { # non-POE
-    my $self = shift;
-    my $name = shift;
-    my $ret  = 0;
-    if (exists $self->{monitored}->{$name}) {
-        my $ps = $self->{monitored}->{$name};
-        if ($ps->is_running) {
-            kill 'TERM', $ps->pid;
-        }
-    }
 }
 
 
