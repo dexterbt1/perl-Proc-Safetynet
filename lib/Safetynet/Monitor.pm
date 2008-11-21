@@ -17,12 +17,13 @@ sub initialize {
     my $self        = $_[OBJECT];
     # add states
     $_[KERNEL]->state( 'heartbeat'                      => $self );
+    $_[KERNEL]->state( 'nop'                            => $self );
     $_[KERNEL]->state( 'do_postback'                    => $self );
     $_[KERNEL]->state( 'list_programs'                  => $self );
     $_[KERNEL]->state( 'add_program'                    => $self );
     $_[KERNEL]->state( 'remove_program'                 => $self );
-    $_[KERNEL]->state( 'get_program'                    => $self );
-    $_[KERNEL]->state( 'view_status'                    => $self );
+    $_[KERNEL]->state( 'info_program'                   => $self );
+    $_[KERNEL]->state( 'info_status'                    => $self );
     $_[KERNEL]->state( 'start_program'                  => $self );
     $_[KERNEL]->state( 'stop_program'                   => $self );
     $_[KERNEL]->state( 'stop_program_timeout'           => $self );
@@ -70,6 +71,16 @@ sub heartbeat {
 
 sub start_work {
     my $self        = $_[OBJECT];
+    # start all autostart processes
+    foreach my $p (@{ $self->{programs}->retrieve_all() }) {
+        if ($p->autostart) {
+            $self->yield( 'start_program', [ $self->alias, 'nop' ], [ ], $p->name );
+        }
+    }
+}
+
+
+sub nop {
     # do nothing
 }
 
@@ -82,11 +93,11 @@ sub sig_CHLD {
     my $exit_val    = $_[ARG2];
     ##print STDERR "SIGCHLD: $name, $pid, $exit_val\n";
     # clear status
-    my $program_name = undef;
+    my $program_name = '';
     foreach my $ps_key (keys %{ $self->{monitored} }) {
         my $ps = $self->{monitored}->{$ps_key};
         if ($ps->pid eq $pid) {
-            delete $ps->{pid};
+            $ps->pid(0);
             $ps->stopped_since( time() );
             $ps->is_running( 0 );
             $program_name = $ps_key;
@@ -94,7 +105,7 @@ sub sig_CHLD {
         }
     }
     # postback if killed
-    if (defined $program_name) {
+    if (exists $self->{killed}->{$program_name}) {
         my $pb = delete $self->{killed}->{$program_name};
         $_[KERNEL]->yield( 'do_postback', $pb->[0], $pb->[1], 1 );
         $_[KERNEL]->delay( 'stop_program_timeout' ); # cancel
@@ -148,7 +159,7 @@ sub remove_program {
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
 }
 
-sub get_program {
+sub info_program {
     my $program_name = $_[ARG2];
     my $o = undef;
     eval {
@@ -158,7 +169,7 @@ sub get_program {
 }
 
 # process management
-sub view_status { 
+sub info_status { 
     my $program_name = $_[ARG2];
     my $o = undef;
     if (exists $_[OBJECT]->{monitored}->{$program_name}) {
@@ -253,6 +264,8 @@ sub shutdown {
     $_[KERNEL]->delay( 'heartbeat' );
     $self->SUPER::shutdown( @_[1..$#_]);
 }
+
+# ==============
 
 
 sub monitor_add_program { # non-POE

@@ -26,11 +26,11 @@ my @api_tests = (
     [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 0 }  ],
     [ 'remove_program', 'perl-1',                               { result => 1 }  ],
     [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }), ] } ],
-    [ 'get_program', 'perl-2',                                  { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
-    [ 'get_program', 'perl-1',                                  { result => undef } ],
+    [ 'info_program', 'perl-2',                                 { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
+    [ 'info_program', 'perl-1',                                 { result => undef } ],
 
     # process management
-    [ 'view_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
+    [ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
     [ 'start_program', 'unknown',                               { result => 0 } ], # unknown
     [ 'stop_program', 'perl-2',                                 { result => 0 } ], # not yet started
     [ 'start_program', 'perl-1',                                { result => 0 } ], # deleted a while ago
