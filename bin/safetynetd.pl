@@ -41,6 +41,8 @@ my $monitor = Safetynet::Monitor->spawn(
 #    );
 #}
 
+$monitor->yield( 'start_work' );
+
 POE::Kernel->run();
 
 __END__
