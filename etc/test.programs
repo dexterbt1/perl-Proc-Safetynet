@@ -1,16 +1,16 @@
 [
    {
       "priority" : "999",
-      "autostart" : 0,
-      "autorestart" : 0,
+      "autostart" : 1,
+      "autorestart" : 1,
       "name" : "cat",
       "command" : "/bin/cat"
    },
    {
       "priority" : "999",
-      "autostart" : 0,
-      "autorestart" : 0,
-      "name" : "echo",
-      "command" : "/bin/echo"
+      "autostart" : 1,
+      "autorestart" : 1,
+      "name" : "sort",
+      "command" : "/usr/bin/sort"
    }
 ]

@@ -61,6 +61,7 @@ sub initialize {
     foreach my $p (@{ $self->{programs}->retrieve_all() }) {
         $self->monitor_add_program( $p );
     }
+    $self->yield( 'start_work' );
 }
 
 

@@ -24,11 +24,13 @@ my $config;
 my $programs = Safetynet::Program::Storage::TextFile->new(
     file        => $config->{programs},
 );
+$programs->reload;
 
 # ---------
 
 my $monitor = Safetynet::Monitor->spawn(
     alias           => q{MONITOR},
+    binpath         => $config->{binpath},
     programs        => $programs,
 );
 #if (exists $config->{unix_server}) {
