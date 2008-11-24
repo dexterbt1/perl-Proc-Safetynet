@@ -25,6 +25,29 @@ process management
     program stop <name>
     program force-stop <name>
 
+
+=================================================
+
+system
+    interactive
+
+provisioning
+
+    view-all
+    view <name>
+    add <name> { json..config.. }
+    remove <name>
+    commit
+
+process management
+
+    status-all
+    status <name>
+    start <name>
+    stop <name>
+    
+
+
 =================================================
 
     safetynetd v0.03 at hostname (ip)

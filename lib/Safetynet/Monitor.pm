@@ -28,7 +28,12 @@ sub initialize {
     $_[KERNEL]->state( 'stop_program'                   => $self );
     $_[KERNEL]->state( 'stop_program_timeout'           => $self );
     $_[KERNEL]->state( 'sig_CHLD'                       => $self );
+    $_[KERNEL]->state( 'sig_ignore'                     => $self );
     $_[KERNEL]->state( 'autorestarted'                  => $self );
+    # trap signals
+    $_[KERNEL]->sig( INT    => 'sig_ignore' );
+    $_[KERNEL]->sig( HUP    => 'sig_ignore' );
+    $_[KERNEL]->sig( TERM   => 'sig_ignore' );
     # verify programs
     {
         (defined $self->options->{programs})
@@ -84,6 +89,13 @@ sub start_work {
 
 sub nop {
     # do nothing
+}
+
+
+sub sig_ignore {
+    # ignore signals for now ...
+    warn "$$ signalled\n";
+    $_[KERNEL]->sig_handled();
 }
 
 
