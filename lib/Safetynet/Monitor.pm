@@ -138,7 +138,7 @@ sub do_postback {
         $postback->[1], 
         $stack,
         { result => $result },
-    ) or confess "unable to postback: $!";
+    ) or warn "unable to postback: $!";
 }
 
 
