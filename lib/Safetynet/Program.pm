@@ -41,8 +41,13 @@ has 'autorestart_wait' => (
 has 'priority' => (
     is          => 'rw',
     isa         => 'Int',
-    required    => 1,
-    default     => 999,
+    required    => 0,
+);
+
+has 'eventlistener' => (
+    is          => 'rw',
+    isa         => 'Bool',
+    required    => 0,
 );
 
 no Moose;

@@ -9,6 +9,7 @@ use Data::Dumper;
 use POE::Kernel;
 use POE::Session;
 
+use Safetynet::Event;
 use Safetynet::Program;
 use Safetynet::ProgramStatus;
 use POSIX ':sys_wait_h';
@@ -27,10 +28,15 @@ sub initialize {
     $_[KERNEL]->state( 'start_program'                  => $self );
     $_[KERNEL]->state( 'stop_program'                   => $self );
     $_[KERNEL]->state( 'stop_program_timeout'           => $self );
-    $_[KERNEL]->state( 'sig_CHLD'                       => $self );
+
     $_[KERNEL]->state( 'sig_ignore'                     => $self );
-    $_[KERNEL]->state( 'autorestarted'                  => $self );
+    $_[KERNEL]->state( 'sig_CHLD'                       => $self );
+    $_[KERNEL]->state( 'sig_PIPE'                       => $self );
+
+    $_[KERNEL]->state( 'bcast_process_started'          => $self );
+    $_[KERNEL]->state( 'bcast_process_stopped'          => $self );
     # trap signals
+    $_[KERNEL]->sig( PIPE   => 'sig_pipe' );
     $_[KERNEL]->sig( INT    => 'sig_ignore' );
     $_[KERNEL]->sig( HUP    => 'sig_ignore' );
     $_[KERNEL]->sig( TERM   => 'sig_ignore' );
@@ -81,7 +87,7 @@ sub start_work {
     # start all autostart processes
     foreach my $p (@{ $self->{programs}->retrieve_all() }) {
         if ($p->autostart) {
-            $self->yield( 'start_program', [ $self->alias, 'nop' ], [ ], $p->name );
+            $self->yield( 'start_program', [ $self->alias, 'nop' ], [ $p ], $p->name );
         }
     }
 }
@@ -95,6 +101,13 @@ sub nop {
 sub sig_ignore {
     # ignore signals for now ...
     warn "$$ signalled\n";
+    $_[KERNEL]->sig_handled();
+}
+
+
+sub sig_PIPE {
+    # ignore signals for now ...
+    warn "$$ signalled PIPE\n";
     $_[KERNEL]->sig_handled();
 }
 
@@ -127,17 +140,19 @@ sub sig_CHLD {
     # schedule for restart, if applicable
     my $prog = $self->{programs}->retrieve( $program_name );
     if (defined $prog) {
+        # an event has happened, a process has been started ...
+        $_[KERNEL]->yield( 'bcast_process_stopped', [ $prog, $exit_val ], 1 );
+        # autorestart if applicable
         if ($prog->autorestart()) {
-            $_[KERNEL]->delay_add( 'start_program' => $prog->autorestart_wait(), [ $self->alias, 'autorestarted'], [ $prog, $exit_val ], $program_name );
+            $_[KERNEL]->delay_add( 
+                'start_program' => 
+                $prog->autorestart_wait(), 
+                [ $self->alias, 'nop'], 
+                [ $prog, $exit_val ], 
+                $program_name,
+            );
         }
     }
-}
-
-
-sub autorestarted {
-    my $stack = $_[ARG0];
-    my ($p, $exit_val) = @$stack;
-    # nop for now ... 
 }
 
 
@@ -165,6 +180,7 @@ sub add_program {
     my $program = $_[ARG2];
     my $o = 0;
     # TODO: sanitize the param
+    # TODO: check whitelist
     eval {
         my $p = Safetynet::Program->new($program);
         $o = $_[OBJECT]->{programs}->add( $p ) ? 1 : 0;
@@ -225,6 +241,7 @@ sub start_program {
                 if ($pid == 0) {
                     # child here ... a point of no return
                     # TODO: redirect STDERR, STDOUT ...
+                    # TODO: check whitelist
                     # TODO: apply uid/gid changes 
                     # TODO: apply chroot
                     # assume command was already sanitized
@@ -244,6 +261,10 @@ sub start_program {
             }
             # else: undef fork means failed start
         }
+    }
+    if ($o) {
+        # an event has happend, a process has been started
+        $_[KERNEL]->yield( 'bcast_process_started', $_[ARG1], $o );
     }
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
 }
@@ -291,6 +312,28 @@ sub shutdown {
     my $self        = $_[OBJECT];
     $_[KERNEL]->delay( 'heartbeat' );
     $self->SUPER::shutdown( @_[1..$#_]);
+}
+
+# ============== Event Broadcasters
+
+
+sub bcast_process_started {
+    my $stack   = $_[ARG0];
+    my $started = $_[ARG1];
+    my ($p, $exit_val) = @$stack;
+    if ($started) {
+        #print "$$: started: ".$p->name."\n";
+    }
+}
+
+
+sub bcast_process_stopped {
+    my $stack   = $_[ARG0];
+    my $stopped = $_[ARG1];
+    my ($p, $exit_val) = @$stack;
+    if ($stopped) {
+        #print "$$: stopped: ".$p->name."\n";
+    }
 }
 
 # ==============
