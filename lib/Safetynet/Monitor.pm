@@ -8,6 +8,8 @@ use Carp;
 use Data::Dumper;
 use POE::Kernel;
 use POE::Session;
+use IO::Handle;
+use Scalar::Util qw/blessed reftype/;
 
 use Safetynet::Event;
 use Safetynet::Program;
@@ -18,7 +20,6 @@ sub initialize {
     my $self        = $_[OBJECT];
     # add states
     $_[KERNEL]->state( 'heartbeat'                      => $self );
-    $_[KERNEL]->state( 'nop'                            => $self );
     $_[KERNEL]->state( 'do_postback'                    => $self );
     $_[KERNEL]->state( 'list_programs'                  => $self );
     $_[KERNEL]->state( 'add_program'                    => $self );
@@ -28,6 +29,7 @@ sub initialize {
     $_[KERNEL]->state( 'start_program'                  => $self );
     $_[KERNEL]->state( 'stop_program'                   => $self );
     $_[KERNEL]->state( 'stop_program_timeout'           => $self );
+    $_[KERNEL]->state( 'nop'                            => $self );
 
     $_[KERNEL]->state( 'sig_ignore'                     => $self );
     $_[KERNEL]->state( 'sig_CHLD'                       => $self );
@@ -36,7 +38,7 @@ sub initialize {
     $_[KERNEL]->state( 'bcast_process_started'          => $self );
     $_[KERNEL]->state( 'bcast_process_stopped'          => $self );
     # trap signals
-    $_[KERNEL]->sig( PIPE   => 'sig_pipe' );
+    $_[KERNEL]->sig( PIPE   => 'sig_PIPE' );
     $_[KERNEL]->sig( INT    => 'sig_ignore' );
     $_[KERNEL]->sig( HUP    => 'sig_ignore' );
     $_[KERNEL]->sig( TERM   => 'sig_ignore' );
@@ -100,6 +102,7 @@ sub nop {
 
 sub sig_ignore {
     # ignore signals for now ...
+    # TODO: bcast this as event
     warn "$$ signalled\n";
     $_[KERNEL]->sig_handled();
 }
@@ -127,6 +130,7 @@ sub sig_CHLD {
             $ps->pid(0);
             $ps->stopped_since( time() );
             $ps->is_running( 0 );
+            delete $ps->{_stdin};
             $program_name = $ps_key;
             last;
         }
@@ -141,7 +145,7 @@ sub sig_CHLD {
     my $prog = $self->{programs}->retrieve( $program_name );
     if (defined $prog) {
         # an event has happened, a process has been started ...
-        $_[KERNEL]->yield( 'bcast_process_stopped', [ $prog, $exit_val ], 1 );
+        $_[KERNEL]->yield( 'bcast_process_stopped', $prog, $exit_val, 1 );
         # autorestart if applicable
         if ($prog->autorestart()) {
             $_[KERNEL]->delay_add( 
@@ -160,6 +164,22 @@ sub do_postback {
     my $postback    = $_[ARG0];
     my $stack       = $_[ARG1];
     my $result      = $_[ARG2];
+    # filter the result to output only public information
+    if (defined($result) and blessed($result)) {
+        # FIXME: maybe we can refactor this later into its own routine
+        if (reftype($result) eq 'HASH') {
+            my $class = ref($result);
+            my $o = { };
+            foreach my $k (keys %$result) {
+                # we'd like to filter out the private keys 
+                # starting with underscores "_"
+                if ($k !~ m/^_/) {  
+                    $o->{$k} = $result->{$k};
+                }
+            }
+            $result = $class->new($o);
+        }
+    }
     $_[KERNEL]->post( 
         $postback->[0], 
         $postback->[1], 
@@ -224,6 +244,7 @@ sub info_status {
 
 sub start_program { 
     my $program_name = $_[ARG2];
+    my $p = undef;
     my $o = 0;
     # TODO: don't start if already started
     SPAWN: {
@@ -233,38 +254,68 @@ sub start_program {
                 # already running
                 last SPAWN;
             }
-            my $p = $_[OBJECT]->{programs}->retrieve($program_name);
+            $p = $_[OBJECT]->{programs}->retrieve($program_name);
             my $command = $p->command;
+
+            # FIXME: needs refactor ..!!!
+            #
+            # simulate open(FOO, "|-")
+            my $pipe_to_fork = sub {
+                # N.B. taken from "perldoc perlfork" manpage
+                my $parent = shift;
+                pipe my $child, $parent 
+                    or die "unable to create pipe";
+                my $pid = fork();
+                (defined $pid) 
+                    or die "fork() failed: $!";
+                if ($pid) {
+                    # parent
+                    close $child;
+                }
+                else {
+                    # child
+                    close $parent;
+                    open(STDIN, "<&=" . fileno($child)) 
+                        or die "child unable to open stdin";
+                }
+                return $pid;
+            };
             # run
-            my $pid = fork;
-            if (defined $pid) {
-                if ($pid == 0) {
-                    # child here ... a point of no return
-                    # TODO: redirect STDERR, STDOUT ...
+            # ---
+            my $outfh = IO::Handle->new;
+            eval {
+                if (my $pid = $pipe_to_fork->($outfh)) {
+                    # parent here
+                    $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
+                    $ps->is_running( 1 );
+                    $ps->pid( $pid );
+                    $ps->started_since( time() );
+                    $outfh->autoflush(1);
+                    $ps->{_stdin} = $outfh;
+                    $o = 1;
+                }
+                else {
+                    # child here ... a point of no return # TODO: redirect STDERR, STDOUT ...
                     # TODO: check whitelist
                     # TODO: apply uid/gid changes 
                     # TODO: apply chroot
                     # assume command was already sanitized
                     my ($cmd) = ($command =~ /^(.*)$/);
                     exec $cmd
-                        or die "cannot exec command [$cmd]";
+                        or print STDERR "unable to exec() $cmd";
                     exit(100);
                 }
-                else {
-                    # parent here
-                    $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
-                    $ps->is_running( 1 );
-                    $ps->pid( $pid );
-                    $ps->started_since( time() );
-                    $o = 1;
-                }
+            };
+            if ($@) {
+                # died somewhere, possibly fork/pipe/open failed
+                # TODO: log
+                warn "$$: $@";
             }
-            # else: undef fork means failed start
         }
     }
     if ($o) {
         # an event has happend, a process has been started
-        $_[KERNEL]->yield( 'bcast_process_started', $_[ARG1], $o );
+        $_[KERNEL]->yield( 'bcast_process_started', $p, 1 );
     }
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
 }
@@ -316,23 +367,47 @@ sub shutdown {
 
 # ============== Event Broadcasters
 
+sub _do_event_bcast { # non-POE
+    my $self = shift;
+    my $event = shift;
+    foreach my $p (@{ $self->{programs}->retrieve_all } ) {
+        my $pname = $p->name;
+        my $ps = $self->{monitored}->{$pname};
+        if ($ps->is_running and $p->eventlistener) {
+            # write to STDIN of event listener
+            my $ps = $self->{monitored}->{$pname};
+            my $stdin = $ps->{_stdin};
+            if (defined $stdin) {
+                print $stdin $event->as_string."\n";
+            }
+        }
+    }
+}
+
 
 sub bcast_process_started {
-    my $stack   = $_[ARG0];
+    my $self    = $_[OBJECT];
+    my $p       = $_[ARG0];
     my $started = $_[ARG1];
-    my ($p, $exit_val) = @$stack;
     if ($started) {
-        #print "$$: started: ".$p->name."\n";
+        my $ev = Safetynet::Event->new(
+            event       => 'process_started',
+            object      => $p->name,
+        );
+        $self->_do_event_bcast( $ev );
     }
 }
 
 
 sub bcast_process_stopped {
-    my $stack   = $_[ARG0];
-    my $stopped = $_[ARG1];
-    my ($p, $exit_val) = @$stack;
+    my $self    = $_[OBJECT];
+    my ($p, $exit_val, $stopped) = @_[ARG0, ARG1, ARG2];
     if ($stopped) {
-        #print "$$: stopped: ".$p->name."\n";
+        my $ev = Safetynet::Event->new(
+            event       => 'process_stopped',
+            object      => $p->name,
+        );
+        $self->_do_event_bcast( $ev );
     }
 }
 

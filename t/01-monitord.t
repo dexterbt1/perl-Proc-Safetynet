@@ -36,6 +36,7 @@ my @api_tests = (
     [ 'start_program', 'perl-1',                                { result => 0 } ], # deleted a while ago
     [ 'start_program', 'perl-2',                                { result => 1 } ],
     [ 'start_program', 'perl-2',                                { result => 0 } ], # already started
+    ##[ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 1 }) } ],
     [ 'stop_program', 'perl-2',                                 { result => 1 } ],
     [ 'stop_program', 'perl-2',                                 { result => 0 } ], # already stopped 
     # more ...
