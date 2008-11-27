@@ -260,15 +260,19 @@ sub start_program {
 
             # pipe: simulate open(FOO, "|-")
             # -----
-            my $parentfh = IO::Handle->new;
+            my $parentfh;
             my $childfh;
-            eval {
-                pipe $childfh, $parentfh 
-                    or die $!;
-            };
-            if ($@) {
-                warn "$$: unable to pipe: $@";
-                last SPAWN; 
+            if ($p->eventlistener) {
+                # pipe only if this is an eventlistener process
+                $parentfh = IO::Handle->new;
+                eval {
+                    pipe $childfh, $parentfh 
+                        or die $!;
+                };
+                if ($@) {
+                    warn "$$: unable to pipe: $@";
+                    last SPAWN; 
+                }
             }
             # fork
             # ----
@@ -279,14 +283,18 @@ sub start_program {
             }
             if ($pid) {
                 # parent here
-                close $childfh;
+                if ($p->eventlistener) {
+                    close $childfh;
+                }
                 $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
                 $ps->is_running( 1 );
                 $ps->pid( $pid );
                 $ps->started_since( time() );
                 # trap autoflush handle errors
                 eval {
-                    $parentfh->autoflush(1);
+                    if (defined $parentfh) {
+                        $parentfh->autoflush(1);
+                    }
                     $ps->{_stdin} = $parentfh;
                     ##print STDERR "$$: started $program_name, pid=$pid\n";
                     $o = 1;
@@ -302,9 +310,11 @@ sub start_program {
                 # TODO: apply uid/gid changes 
                 # TODO: apply chroot
                 # assume command was already sanitized
-                close $parentfh;
-                open(STDIN, "<&=" . fileno($childfh)) 
-                    or die "child unable to open stdin";
+                if ($p->eventlistener) {
+                    close $parentfh;
+                    open(STDIN, "<&=" . fileno($childfh)) 
+                        or die "child unable to open stdin";
+                }
                 my ($cmd) = ($command =~ /^(.*)$/);
                 exec $cmd
                     or exit(100);
