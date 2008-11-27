@@ -28,11 +28,11 @@ has 'timestamp' => (
 
 sub as_string {
     my $self = shift;
-    my $o = '';
-    $o .= sprintf("event:%s", $self->event);
-    $o .= sprintf("object:%s", $self->object);
-    $o .= sprintf("timestamp:%s", strftime("%Y%m%dT%H%M%S", localtime($self->timestamp)));
-    return $o;
+    my @out = ();
+    push @out, sprintf("event:%s", $self->event);
+    push @out, sprintf("object:%s", $self->object);
+    push @out, sprintf("timestamp:%s", strftime("%Y%m%d-%H%M%S", localtime($self->timestamp)));
+    return join("\t", @out);
 }
 
 

@@ -1,5 +1,21 @@
 [
    {
+      "eventlistener" : 1,
+      "priority" : "999",
+      "autostart" : 0,
+      "autorestart" : 0,
+      "name" : "evlog",
+      "command" : "/home/dexter/pl/evlog /tmp/evlog"
+   },
+   {
+      "eventlistener" : 1,
+      "priority" : "999",
+      "autostart" : 1,
+      "autorestart" : 1,
+      "name" : "log2",
+      "command" : "/home/dexter/pl/log2.pl"
+   },
+   {
       "priority" : "999",
       "autostart" : 1,
       "autorestart" : 1,
@@ -12,13 +28,5 @@
       "autorestart" : 1,
       "name" : "sort",
       "command" : "/usr/bin/sort"
-   },
-   {
-      "eventlistener" : 1,
-      "priority" : "999",
-      "autostart" : 1,
-      "autorestart" : 1,
-      "name" : "evlog",
-      "command" : "/home/dexter/pl/evlog /tmp/evlog"
    }
 ]

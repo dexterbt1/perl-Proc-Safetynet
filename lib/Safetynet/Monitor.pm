@@ -115,7 +115,7 @@ sub sig_PIPE {
 }
 
 
-# sigCHLD handler
+# SIGCHLD handler
 sub sig_CHLD {
     my $self        = $_[OBJECT];
     my $name        = $_[ARG0];
@@ -126,7 +126,8 @@ sub sig_CHLD {
     my $program_name = '';
     foreach my $ps_key (keys %{ $self->{monitored} }) {
         my $ps = $self->{monitored}->{$ps_key};
-        if ($ps->pid eq $pid) {
+        if ($ps->pid() == $pid) {
+            ##print STDERR "pid=$pid, pspid=".$ps->pid(), "\n";
             $ps->pid(0);
             $ps->stopped_since( time() );
             $ps->is_running( 0 );
@@ -257,64 +258,61 @@ sub start_program {
             $p = $_[OBJECT]->{programs}->retrieve($program_name);
             my $command = $p->command;
 
-            # FIXME: needs refactor ..!!!
-            #
-            # simulate open(FOO, "|-")
-            my $pipe_to_fork = sub {
-                # N.B. taken from "perldoc perlfork" manpage
-                my $parent = shift;
-                pipe my $child, $parent 
-                    or die "unable to create pipe";
-                my $pid = fork();
-                (defined $pid) 
-                    or die "fork() failed: $!";
-                if ($pid) {
-                    # parent
-                    close $child;
-                }
-                else {
-                    # child
-                    close $parent;
-                    open(STDIN, "<&=" . fileno($child)) 
-                        or die "child unable to open stdin";
-                }
-                return $pid;
-            };
-            # run
-            # ---
-            my $outfh = IO::Handle->new;
+            # pipe: simulate open(FOO, "|-")
+            # -----
+            my $parentfh = IO::Handle->new;
+            my $childfh;
             eval {
-                if (my $pid = $pipe_to_fork->($outfh)) {
-                    # parent here
-                    $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
-                    $ps->is_running( 1 );
-                    $ps->pid( $pid );
-                    $ps->started_since( time() );
-                    $outfh->autoflush(1);
-                    $ps->{_stdin} = $outfh;
-                    $o = 1;
-                }
-                else {
-                    # child here ... a point of no return # TODO: redirect STDERR, STDOUT ...
-                    # TODO: check whitelist
-                    # TODO: apply uid/gid changes 
-                    # TODO: apply chroot
-                    # assume command was already sanitized
-                    my ($cmd) = ($command =~ /^(.*)$/);
-                    exec $cmd
-                        or print STDERR "unable to exec() $cmd";
-                    exit(100);
-                }
+                pipe $childfh, $parentfh 
+                    or die $!;
             };
             if ($@) {
-                # died somewhere, possibly fork/pipe/open failed
-                # TODO: log
-                warn "$$: $@";
+                warn "$$: unable to pipe: $@";
+                last SPAWN; 
+            }
+            # fork
+            # ----
+            my $pid = fork;
+            if (not defined $pid) {
+                warn "$$: unable to fork: $!";
+                last SPAWN;
+            }
+            if ($pid) {
+                # parent here
+                close $childfh;
+                $_[KERNEL]->sig_child( $pid, 'sig_CHLD' );
+                $ps->is_running( 1 );
+                $ps->pid( $pid );
+                $ps->started_since( time() );
+                # trap autoflush handle errors
+                eval {
+                    $parentfh->autoflush(1);
+                    $ps->{_stdin} = $parentfh;
+                    ##print STDERR "$$: started $program_name, pid=$pid\n";
+                    $o = 1;
+                };
+                if ($@) {
+                    warn "$$: setup of child stdin failed: $@";
+                    last SPAWN;
+                }
+            }
+            else {
+                # child here ... a point of no return # TODO: redirect STDERR, STDOUT ...
+                # TODO: check whitelist
+                # TODO: apply uid/gid changes 
+                # TODO: apply chroot
+                # assume command was already sanitized
+                close $parentfh;
+                open(STDIN, "<&=" . fileno($childfh)) 
+                    or die "child unable to open stdin";
+                my ($cmd) = ($command =~ /^(.*)$/);
+                exec $cmd
+                    or exit(100);
             }
         }
     }
     if ($o) {
-        # an event has happend, a process has been started
+        # an event has happened, a process has been started
         $_[KERNEL]->yield( 'bcast_process_started', $p, 1 );
     }
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
