@@ -35,6 +35,8 @@ sub initialize {
     $_[KERNEL]->state( 'sig_CHLD'                       => $self );
     $_[KERNEL]->state( 'sig_PIPE'                       => $self );
 
+    $_[KERNEL]->state( 'tell_event'                     => $self );
+    $_[KERNEL]->state( 'bcast_system_error'             => $self );
     $_[KERNEL]->state( 'bcast_process_started'          => $self );
     $_[KERNEL]->state( 'bcast_process_stopped'          => $self );
     # trap signals
@@ -110,7 +112,8 @@ sub sig_ignore {
 
 sub sig_PIPE {
     # ignore signals for now ...
-    warn "$$ signalled PIPE\n";
+    warn "$$ signalled SIGPIPE\n";
+    $_[KERNEL]->yield( 'bcast_system_error', "got SIGPIPE signal" );
     $_[KERNEL]->sig_handled();
 }
 
@@ -126,8 +129,9 @@ sub sig_CHLD {
     my $program_name = '';
     foreach my $ps_key (keys %{ $self->{monitored} }) {
         my $ps = $self->{monitored}->{$ps_key};
-        if ($ps->pid() == $pid) {
-            ##print STDERR "pid=$pid, pspid=".$ps->pid(), "\n";
+        my $pspid = $ps->pid() || 0;
+        if ($pspid == $pid) {
+            ##print STDERR "post: pid=$pid, pspid=".$ps->pid(), "\n";
             $ps->pid(0);
             $ps->stopped_since( time() );
             $ps->is_running( 0 );
@@ -271,6 +275,7 @@ sub start_program {
                 };
                 if ($@) {
                     warn "$$: unable to pipe: $@";
+                    $_[KERNEL]->yield( 'bcast_system_error', "unable to create pipe: $@", $p );
                     last SPAWN; 
                 }
             }
@@ -279,6 +284,7 @@ sub start_program {
             my $pid = fork;
             if (not defined $pid) {
                 warn "$$: unable to fork: $!";
+                $_[KERNEL]->yield( 'bcast_system_error', "unable to fork: $@", $p );
                 last SPAWN;
             }
             if ($pid) {
@@ -375,6 +381,21 @@ sub shutdown {
 
 # ============== Event Broadcasters
 
+# POE_ARGS( $p, $ps, $event )
+# - sends the event to one event listener
+sub tell_event {
+    my $self    = $_[OBJECT];
+    my $p       = $_[ARG0];
+    my $ps      = $_[ARG1];
+    my $event   = $_[ARG2];
+    # write to STDIN of event listener
+    my $stdin   = $ps->{_stdin};
+    if (defined $stdin) {
+        print $stdin $event->as_string."\n";
+    }
+}
+
+
 sub _do_event_bcast { # non-POE
     my $self = shift;
     my $event = shift;
@@ -382,14 +403,26 @@ sub _do_event_bcast { # non-POE
         my $pname = $p->name;
         my $ps = $self->{monitored}->{$pname};
         if ($ps->is_running and $p->eventlistener) {
-            # write to STDIN of event listener
-            my $ps = $self->{monitored}->{$pname};
-            my $stdin = $ps->{_stdin};
-            if (defined $stdin) {
-                print $stdin $event->as_string."\n";
-            }
+            $self->yield( 'tell_event' => $p, $ps, $event );
         }
     }
+}
+
+
+sub bcast_system_error {
+    my $self    = $_[OBJECT];
+    my $message = $_[ARG0];
+    my $p       = $_[ARG1];
+    my $object  = '@SYSTEM'; #default
+    if (defined $p) {
+        $object = $p->name;
+    }
+    my $ev = Safetynet::Event->new(
+        event       => 'system_error',
+        object      => $object,
+        message     => $message,
+    );
+    $self->_do_event_bcast( $ev );
 }
 
 

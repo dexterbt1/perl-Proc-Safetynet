@@ -25,13 +25,21 @@ has 'timestamp' => (
     default     => sub { time(); },
 );
 
+has 'message' => (
+    is          => 'rw',
+    isa         => 'Any',
+    required    => 0,
+);
+
 
 sub as_string {
     my $self = shift;
     my @out = ();
+    push @out, sprintf("timestamp:%s", strftime("%Y-%m-%d.%H:%M:%S", localtime($self->timestamp)));
     push @out, sprintf("event:%s", $self->event);
     push @out, sprintf("object:%s", $self->object);
-    push @out, sprintf("timestamp:%s", strftime("%Y%m%d-%H%M%S", localtime($self->timestamp)));
+    (defined $self->message) 
+        and do { push @out, sprintf("message:%s", $self->message); };
     return join("\t", @out);
 }
 

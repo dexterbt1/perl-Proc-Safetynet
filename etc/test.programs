@@ -13,7 +13,7 @@
       "autostart" : 1,
       "autorestart" : 1,
       "name" : "log2",
-      "command" : "/home/dexter/pl/log2.pl"
+      "command" : "/home/dexter/pl/log2.pl >> /tmp/safetynet.log"
    },
    {
       "priority" : "999",
