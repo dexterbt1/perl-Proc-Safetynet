@@ -1,4 +1,4 @@
-package Safetynet::Monitor;
+package Safetynet::Supervisor;
 use strict;
 use warnings;
 use Wyrls::AbstractWorker;

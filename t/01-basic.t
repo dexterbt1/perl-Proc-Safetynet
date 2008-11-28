@@ -54,11 +54,11 @@ my $programs = Safetynet::Program::Storage::TextFile->new(
     file => '/tmp/test.programs',
 );
 
-my $MONITOR = q{MONITOR};
+my $SUPERVISOR = q{SUPERVISOR};
 my $SHELL   = q{SHELL};
 
-my $monitor = Safetynet::Monitor->spawn(
-    alias       => $MONITOR,
+my $supervisor = Safetynet::Supervisor->spawn(
+    alias       => $SUPERVISOR,
     programs    => $programs,
     binpath     => '/bin:/usr/bin',
 );
@@ -78,7 +78,7 @@ POE::Session->create(
                 push @api_results, $er;
                 push @api_stack, $stack;
                 $_[KERNEL]->delay( 'timeout' => 30 );
-                $monitor->yield( $cmd, [ $SHELL, 'api_test_result' ], $stack, $param );
+                $supervisor->yield( $cmd, [ $SHELL, 'api_test_result' ], $stack, $param );
                 diag "requested $cmd";
             }
             else {
@@ -104,7 +104,7 @@ POE::Session->create(
         shutdown => sub {
             pass "shutdown";
             $_[KERNEL]->alias_remove( $SHELL );
-            $monitor->yield( 'shutdown' );
+            $supervisor->yield( 'shutdown' );
         },
     },
 );

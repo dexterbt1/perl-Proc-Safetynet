@@ -14,19 +14,19 @@ BEGIN {
 
 my $programs = Safetynet::Program::Storage::Memory->new();
 
-my $MONITOR = q{MONITOR};
+my $SUPERVISOR = q{SUPERVISOR};
 my $SHELL   = q{SHELL};
 my $SHELLSESS = q{SHELLSESSION};
 
-my $monitor = Safetynet::Monitor->spawn(
-    alias       => $MONITOR,
+my $supervisor = Safetynet::Supervisor->spawn(
+    alias       => $SUPERVISOR,
     programs    => $programs,
     binpath     => '/bin:/usr/bin',
 );
 
 my $shell = Safetynet::Shell::Basic->spawn(
     alias       => $SHELL,
-    monitor     => $monitor,
+    supervisor     => $supervisor,
 );
 
 # server session 
@@ -56,7 +56,7 @@ POE::Session->create(
         shutdown => sub {
             pass "shutdown";
             $_[KERNEL]->alias_remove( $SHELL );
-            $monitor->yield( 'shutdown' );
+            $supervisor->yield( 'shutdown' );
         },
     },
 );
