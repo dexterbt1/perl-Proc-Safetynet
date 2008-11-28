@@ -26,7 +26,7 @@ my $supervisor = Safetynet::Supervisor->spawn(
 
 my $shell = Safetynet::Shell::Basic->spawn(
     alias       => $SHELL,
-    supervisor     => $supervisor,
+    supervisor  => $supervisor,
 );
 
 # server session 
@@ -65,4 +65,3 @@ POE::Kernel->run();
 
 
 __END__
-

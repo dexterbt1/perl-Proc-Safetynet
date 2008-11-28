@@ -37,6 +37,7 @@ sub initialize {
 
     $_[KERNEL]->state( 'tell_event'                     => $self );
     $_[KERNEL]->state( 'bcast_system_error'             => $self );
+    $_[KERNEL]->state( 'bcast_system_info'              => $self );
     $_[KERNEL]->state( 'bcast_process_started'          => $self );
     $_[KERNEL]->state( 'bcast_process_stopped'          => $self );
     # trap signals
@@ -113,7 +114,7 @@ sub sig_ignore {
 sub sig_PIPE {
     # ignore signals for now ...
     warn "$$ signalled SIGPIPE\n";
-    $_[KERNEL]->yield( 'bcast_system_error', "got SIGPIPE signal" );
+    $_[KERNEL]->yield( 'bcast_system_info', "SIGPIPE warning" );
     $_[KERNEL]->sig_handled();
 }
 
@@ -419,6 +420,23 @@ sub bcast_system_error {
     }
     my $ev = Safetynet::Event->new(
         event       => 'system_error',
+        object      => $object,
+        message     => $message,
+    );
+    $self->_do_event_bcast( $ev );
+}
+
+
+sub bcast_system_info {
+    my $self    = $_[OBJECT];
+    my $message = $_[ARG0];
+    my $p       = $_[ARG1];
+    my $object  = '@SYSTEM'; #default
+    if (defined $p) {
+        $object = $p->name;
+    }
+    my $ev = Safetynet::Event->new(
+        event       => 'system_info',
         object      => $object,
         message     => $message,
     );
