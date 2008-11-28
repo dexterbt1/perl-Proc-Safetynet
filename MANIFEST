@@ -3,6 +3,7 @@ Makefile.PL
 MANIFEST
 README
 t/01-monitord.t
+t/05-shell-basic.t
 t/10-program-crud-mem.t
 t/11-program-crud-textfile.t
 t/Safetynet.t
@@ -12,3 +13,4 @@ lib/Safetynet/Program.pm
 lib/Safetynet/ProgramStatus.pm
 lib/Safetynet/Program/Storage.pm
 lib/Safetynet/Program/Storage/TextFile.pm
+lib/Safetynet/Shell/Basic.pm
