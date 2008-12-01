@@ -25,6 +25,7 @@ sub initialize {
     $_[KERNEL]->state( 'add_program'                    => $self );
     $_[KERNEL]->state( 'remove_program'                 => $self );
     $_[KERNEL]->state( 'info_program'                   => $self );
+    $_[KERNEL]->state( 'list_status'                    => $self );
     $_[KERNEL]->state( 'info_status'                    => $self );
     $_[KERNEL]->state( 'start_program'                  => $self );
     $_[KERNEL]->state( 'stop_program'                   => $self );
@@ -42,7 +43,7 @@ sub initialize {
     $_[KERNEL]->state( 'bcast_process_stopped'          => $self );
     # trap signals
     $_[KERNEL]->sig( PIPE   => 'sig_PIPE' );
-    $_[KERNEL]->sig( INT    => 'sig_ignore' );
+    #$_[KERNEL]->sig( INT    => 'sig_ignore' );
     $_[KERNEL]->sig( HUP    => 'sig_ignore' );
     $_[KERNEL]->sig( TERM   => 'sig_ignore' );
     # verify programs
@@ -186,6 +187,7 @@ sub do_postback {
             $result = $class->new($o);
         }
     }
+    #print Dumper( [ $_[STATE], $postback, $stack, $result ] );
     $_[KERNEL]->post( 
         $postback->[0], 
         $postback->[1], 
@@ -239,6 +241,13 @@ sub info_program {
 }
 
 # process management
+
+sub list_status { 
+    my $o = undef;
+    $o = $_[OBJECT]->{monitored};
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+}
+
 sub info_status { 
     my $program_name = $_[ARG2];
     my $o = undef;

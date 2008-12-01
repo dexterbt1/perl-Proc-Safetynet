@@ -6,7 +6,8 @@ use Data::Dumper;
 BEGIN {
     use_ok 'Safetynet';
     use_ok 'Safetynet::Program::Storage::TextFile';
-    use_ok 'Safetynet::Shell::Basic';
+    use_ok 'Safetynet::RpcSession::Simple';
+    use_ok 'IO::ScalarArray';
     use_ok 'POE::Kernel';
     use_ok 'POE::Session';
 }
@@ -24,9 +25,11 @@ my $supervisor = Safetynet::Supervisor->spawn(
     binpath     => '/bin:/usr/bin',
 );
 
-my $shell = Safetynet::Shell::Basic->spawn(
-    alias       => $SHELL,
+my @socks = ();
+my $rpcfh = IO::ScalarArray->new(\@socks);
+my $rpcsess = Safetynet::RpcSession::Simple->spawn(
     supervisor  => $supervisor,
+    socket      => $rpcfh,
 );
 
 # server session 

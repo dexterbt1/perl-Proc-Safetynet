@@ -50,6 +50,15 @@ has 'eventlistener' => (
     required    => 0,
 );
 
+sub TO_JSON {
+    my $self = shift;
+    my $o = { };
+    foreach my $k (keys %$self) {
+        $o->{$k} = $self->{$k};
+    }
+    return $o;
+}
+
 no Moose;
 
 1;

@@ -3,6 +3,7 @@ use strict;
 use warnings;
 
 use Safetynet;
+use Safetynet::RpcServer::Unix;
 use Safetynet::Program::Storage::TextFile;
 
 use Fcntl ':flock';
@@ -42,15 +43,14 @@ my $supervisor = Safetynet::Supervisor->spawn(
     binpath         => $config->{binpath},
     programs        => $programs,
 );
-#if (exists $config->{unix_server}) {
-#    Safetynet::UnixServer->spawn(
-#        alias       => q{UNIXSERVER},
-#        supervisor  => q{MONITOR},
-#        %{ $config->{unix_server} },
-#    );
-#}
-
-$supervisor->yield( 'start_work' );
+if (exists $config->{unix_server}) {
+    Safetynet::RpcServer::Unix->spawn(
+        alias           => q{UNIXSERVER},
+        supervisor      => $supervisor->alias,
+        session_class   => 'Safetynet::RpcSession::Simple',
+        socket          => $config->{unix_server}->{socket},
+    );
+}
 
 POE::Kernel->run();
 
