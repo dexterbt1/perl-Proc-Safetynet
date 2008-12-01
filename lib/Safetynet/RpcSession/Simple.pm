@@ -86,7 +86,7 @@ sub interpret {
         INTERP: {
             if (not defined $input->{method}) {
                 $result = {
-                    method      => "handle_error",
+                    result      => undef,
                     error       => { 'message' => 'method not specified' },
                     id          => $input->{id},
                 };
@@ -94,7 +94,7 @@ sub interpret {
             }
             if (not(defined $input->{params}) or (ref($input->{params}) ne 'ARRAY')) {
                 $result = {
-                    method      => "handle_error",
+                    result      => undef,
                     error       => { 'message' => 'invalid params, expected ARRAY' },
                     id          => $input->{id},
                 };
@@ -102,7 +102,7 @@ sub interpret {
             }
             if (not $RPC_METHOD->{$input->{method}}) {
                 $result = {
-                    method      => "handle_error",
+                    result      => undef,
                     error       => { 'message' => 'method unsupported' },
                     id          => $input->{id},
                 };
