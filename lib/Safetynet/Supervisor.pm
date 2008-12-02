@@ -195,7 +195,7 @@ sub do_postback {
         if ($error =~ m/^(.*)\s+at\s.*line\s\d+$/) {
             ($cerr) = $1;
         }
-        $res->{error} = $cerr; 
+        $res->{error} = { message => $cerr };
     }
     $_[KERNEL]->post( 
         $postback->[0], 
@@ -362,6 +362,9 @@ sub start_program {
                 exec $cmd
                     or exit(100);
             }
+        }
+        else {
+            $e = "object does not exist";
         }
     }
     if ($o) {

@@ -34,6 +34,7 @@ sub TO_JSON {
     my $self = shift;
     my $o = { };
     foreach my $k (keys %$self) {
+        next if ($k =~ /^_/);
         $o->{$k} = $self->{$k};
     }
     return $o;
