@@ -171,6 +171,7 @@ sub do_postback {
     my $postback    = $_[ARG0];
     my $stack       = $_[ARG1];
     my $result      = $_[ARG2];
+    my $error       = $_[ARG3];
     # filter the result to output only public information
     if (defined($result) and blessed($result)) {
         # FIXME: maybe we can refactor this later into its own routine
@@ -188,11 +189,19 @@ sub do_postback {
         }
     }
     #print Dumper( [ $_[STATE], $postback, $stack, $result ] );
+    my $res = { result => $result };
+    if (defined $error) { 
+        my $cerr = $error;
+        if ($error =~ m/^(.*)\s+at\s.*line\s\d+$/) {
+            ($cerr) = $1;
+        }
+        $res->{error} = $cerr; 
+    }
     $_[KERNEL]->post( 
         $postback->[0], 
         $postback->[1], 
         $stack,
-        { result => $result },
+        $res,
     ) or warn "unable to postback: $!";
 }
 
@@ -207,6 +216,7 @@ sub list_programs {
 sub add_program {
     my $program = $_[ARG2];
     my $o = 0;
+    my $e = undef;
     # TODO: sanitize the param
     # TODO: check whitelist
     eval {
@@ -217,27 +227,35 @@ sub add_program {
             $_[OBJECT]->monitor_add_program( $p );
         }
     };
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    if ($@) {
+        $e = $@;
+    }
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 
 sub remove_program {
     my $program_name = $_[ARG2];
-    my $o = undef;
+    my $o = 0;
+    my $e = undef;
     eval {
         $_[OBJECT]->monitor_remove_program( $program_name );
         $o = $_[OBJECT]->{programs}->remove( $program_name ) ? 1 : 0;
     };
-    if ($@) { $o = 0; }
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    if ($@) { $e = $@; }
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 
 sub info_program {
     my $program_name = $_[ARG2];
     my $o = undef;
+    my $e = undef;
     eval {
         $o = $_[OBJECT]->{programs}->retrieve( $program_name );
     };
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    if (not defined $o) {
+        $e = "object does not exist";
+    }
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 
 # process management
@@ -251,22 +269,28 @@ sub list_status {
 sub info_status { 
     my $program_name = $_[ARG2];
     my $o = undef;
+    my $e = undef;
     if (exists $_[OBJECT]->{monitored}->{$program_name}) {
         $o = $_[OBJECT]->{monitored}->{$program_name};
     }
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    if (not defined $o) {
+        $e = "status for object ($program_name) does not exist";
+    }
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 
 sub start_program { 
     my $program_name = $_[ARG2];
     my $p = undef;
     my $o = 0;
+    my $e = undef;
     # TODO: don't start if already started
     SPAWN: {
         if (exists $_[OBJECT]->{monitored}->{$program_name}) {
             my $ps = $_[OBJECT]->{monitored}->{$program_name};
             if ($ps->is_running) {
                 # already running
+                $e = "already running";
                 last SPAWN;
             }
             $p = $_[OBJECT]->{programs}->retrieve($program_name);
@@ -286,6 +310,7 @@ sub start_program {
                 if ($@) {
                     warn "$$: unable to pipe: $@";
                     $_[KERNEL]->yield( 'bcast_system_error', "unable to create pipe: $@", $p );
+                    $e = "unable to create pipe: $@";
                     last SPAWN; 
                 }
             }
@@ -295,6 +320,7 @@ sub start_program {
             if (not defined $pid) {
                 warn "$$: unable to fork: $!";
                 $_[KERNEL]->yield( 'bcast_system_error', "unable to fork: $@", $p );
+                $e = "unable to fork: $!";
                 last SPAWN;
             }
             if ($pid) {
@@ -316,7 +342,8 @@ sub start_program {
                     $o = 1;
                 };
                 if ($@) {
-                    warn "$$: setup of child stdin failed: $@";
+                    $e = "$$: setup of child stdin failed: $@";
+                    warn $e;
                     last SPAWN;
                 }
             }
@@ -341,11 +368,12 @@ sub start_program {
         # an event has happened, a process has been started
         $_[KERNEL]->yield( 'bcast_process_started', $p, 1 );
     }
-    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o );
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 
 sub stop_program {
     my $program_name = $_[ARG2];
+    my $e = undef;
     if (exists $_[OBJECT]->{monitored}->{$program_name}) {
         my $ps = $_[OBJECT]->{monitored}->{$program_name};
         if ( ($ps->is_running) and (not exists $_[OBJECT]->{killed}->{$program_name}) ) {
@@ -360,17 +388,20 @@ sub stop_program {
             }
             else {
                 # signalling did not work this time
-                $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+                $e = "kill signal failed";
+                $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0, $e );
             }
         }
         else {
             # not running or already issued a kill
-            $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+            $e = "not running or already issued kill signal";
+            $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0, $e );
         }
     }
     else {
         # non-existent
-        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+        $e = "object does not exist";
+        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0, $e );
     }
 }
 
@@ -378,7 +409,8 @@ sub stop_program_timeout {
     my $program_name = $_[ARG2];
     if (exists $_[OBJECT]->{killed}->{$program_name}) {
         delete $_[OBJECT]->{killed}->{$program_name};
-        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0 );
+        my $e = "timeout";
+        $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], 0, $e );
     }
 }
 

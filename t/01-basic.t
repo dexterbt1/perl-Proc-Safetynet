@@ -23,26 +23,26 @@ my @api_tests = (
                 Safetynet::Program->new({ name => 'perl-1', 'command' => $^X }),
                 Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }),
             ] } ],
-    [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 0 }  ],
+    [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 0, error => 'object already exists' }  ],
     [ 'remove_program', 'perl-1',                               { result => 1 }  ],
     [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }), ] } ],
     [ 'info_program', 'perl-2',                                 { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
-    [ 'info_program', 'perl-1',                                 { result => undef } ],
+    [ 'info_program', 'perl-1',                                 { result => undef, error => 'object does not exist' } ],
 
     # process management
     [ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
     [ 'start_program', 'unknown',                               { result => 0 } ], # unknown
-    [ 'stop_program', 'perl-2',                                 { result => 0 } ], # not yet started
+    [ 'stop_program', 'perl-2',                                 { result => 0, error => 'not running or already issued kill signal' } ], # not yet started
     [ 'start_program', 'perl-1',                                { result => 0 } ], # deleted a while ago
     [ 'start_program', 'perl-2',                                { result => 1 } ],
-    [ 'start_program', 'perl-2',                                { result => 0 } ], # already started
+    [ 'start_program', 'perl-2',                                { result => 0, error => 'already running' } ], # already started
     ##[ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 1 }) } ],
     [ 'stop_program', 'perl-2',                                 { result => 1 } ],
-    [ 'stop_program', 'perl-2',                                 { result => 0 } ], # already stopped 
+    [ 'stop_program', 'perl-2',                                 { result => 0, error => 'not running or already issued kill signal' } ], # already stopped 
     # more ...
     [ 'add_program', { 'name' => 'perl-3', 'command' => $^X, }, { result => 1 }  ],
     [ 'start_program', 'perl-3',                                { result => 1 } ],
-    [ 'remove_program', 'perl-3',                               { result => 0 } ], # running programs cannot be removed
+    [ 'remove_program', 'perl-3',                               { result => 0, error => 'cannot remove running program' } ], # running programs cannot be removed
     [ 'stop_program', 'perl-3',                                 { result => 1 } ], # running programs cannot be removed
         
 );
