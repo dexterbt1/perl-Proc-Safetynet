@@ -7,11 +7,12 @@ WriteMakefile(
     VERSION_FROM      => 'lib/Safetynet.pm', # finds $VERSION
     PREREQ_PM         => {
         'Test::Exception'                   => 0.25,
-        #'JSON::XS'                          => 2.21,
+        'JSON::XS'                          => 2.21,
+        'POE'                               => 1.0003,
         'Moose'                             => 0.51,
-        'Proc::Daemon'                      => 0.03,
+        'POE::Filter::JSON::Incr'           => 0.02,
     }, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Safetynet.pm', # retrieve abstract from module
-       AUTHOR         => 'Dexter Tad-y <dexter@>') : ()),
+       AUTHOR         => 'Dexter Tad-y <dtady@xyber.ph>') : ()),
 );

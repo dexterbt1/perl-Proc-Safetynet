@@ -1,8 +1,9 @@
 package Safetynet::Supervisor;
 use strict;
 use warnings;
-use Wyrls::AbstractWorker;
-use base qw/Wyrls::AbstractWorker/;
+
+use Safetynet::POEWorker;
+use base qw/Safetynet::POEWorker/;
 
 use Carp;
 use Data::Dumper;
