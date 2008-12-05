@@ -11,7 +11,10 @@ WriteMakefile(
         'POE'                               => 1.0003,
         'Moose'                             => 0.51,
         'POE::Filter::JSON::Incr'           => 0.02,
-    }, # e.g., Module::Name => 1.1
+    }, 
+    EXE_FILES         => [
+        'bin/safetynetd.pl',
+    ],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Proc/Safetynet.pm', # retrieve abstract from module
        AUTHOR         => 'Dexter Tad-y <dexterbt1@yahoo.com>') : ()),

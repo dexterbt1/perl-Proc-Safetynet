@@ -24,6 +24,8 @@ my $RPC_METHOD = {
     'info_status'                       => 1,
     'list_programs'                     => 1,
     'info_program'                      => 1,
+    'add_program'                       => 1,
+    'remove_program'                    => 1,
 };
 
 

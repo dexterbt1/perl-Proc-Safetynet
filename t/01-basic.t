@@ -39,12 +39,10 @@ my @api_tests = (
     ##[ 'info_status', 'perl-2',                                  { result => Proc::Safetynet::ProgramStatus->new({ is_running => 1 }) } ],
     [ 'stop_program', 'perl-2',                                 { result => 1 } ],
     [ 'stop_program', 'perl-2',                                 { result => 0, error => { message => 'not running or already issued kill signal' } } ], # already stopped 
-    # more ...
     [ 'add_program', { 'name' => 'perl-3', 'command' => $^X, }, { result => 1 }  ],
     [ 'start_program', 'perl-3',                                { result => 1 } ],
     [ 'remove_program', 'perl-3',                               { result => 0, error => { message => 'cannot remove running program' } } ], # running programs cannot be removed
     [ 'stop_program', 'perl-3',                                 { result => 1 } ], # running programs cannot be removed
-        
 );
 my @api_results = ();
 my @api_stack   = ();
