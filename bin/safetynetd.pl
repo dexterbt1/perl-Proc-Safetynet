@@ -2,9 +2,9 @@
 use strict;
 use warnings;
 
-use Safetynet;
-use Safetynet::RpcServer::Unix;
-use Safetynet::Program::Storage::TextFile;
+use Proc::Safetynet;
+use Proc::Safetynet::RpcServer::Unix;
+use Proc::Safetynet::Program::Storage::TextFile;
 
 use Fcntl ':flock';
 use Config::General;
@@ -31,23 +31,23 @@ my $config;
     $config = { $rc->getall() };
 }
 
-my $programs = Safetynet::Program::Storage::TextFile->new(
+my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
     file        => $config->{programs},
 );
 $programs->reload;
 
 # ---------
 
-my $supervisor = Safetynet::Supervisor->spawn(
+my $supervisor = Proc::Safetynet::Supervisor->spawn(
     alias           => q{SUPERVISOR},
     binpath         => $config->{binpath},
     programs        => $programs,
 );
 if (exists $config->{unix_server}) {
-    Safetynet::RpcServer::Unix->spawn(
+    Proc::Safetynet::RpcServer::Unix->spawn(
         alias           => q{UNIXSERVER},
         supervisor      => $supervisor->alias,
-        session_class   => 'Safetynet::RpcSession::Simple',
+        session_class   => 'Proc::Safetynet::RpcSession::Simple',
         socket          => $config->{unix_server}->{socket},
     );
 }
