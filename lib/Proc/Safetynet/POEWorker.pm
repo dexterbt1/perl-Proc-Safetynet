@@ -1,4 +1,4 @@
-package Safetynet::POEWorker;
+package Proc::Safetynet::POEWorker;
 
 use 5.008;
 use strict;
@@ -17,7 +17,7 @@ use Scalar::Util qw/weaken/;
 
 =head1 METHODS
 
-A worker component have object methods. 
+A worker component with object methods. 
 
 =over 4
 

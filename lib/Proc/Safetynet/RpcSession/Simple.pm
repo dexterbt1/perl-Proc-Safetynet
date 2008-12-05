@@ -1,18 +1,18 @@
-package Safetynet::RpcSession::Simple;
+package Proc::Safetynet::RpcSession::Simple;
 use strict;
 use warnings;
 
-use Safetynet::POEWorker;
-use base qw/Safetynet::POEWorker/;
+use Proc::Safetynet::POEWorker;
+use base qw/Proc::Safetynet::POEWorker/;
 
 use Carp;
 use Data::Dumper;
 use POE::Kernel;
 use POE::Session;
 
-use Safetynet::Event;
-use Safetynet::Program;
-use Safetynet::ProgramStatus;
+use Proc::Safetynet::Event;
+use Proc::Safetynet::Program;
+use Proc::Safetynet::ProgramStatus;
 
 use JSON::XS 2.21;
 use POE::Filter::JSON::Incr;

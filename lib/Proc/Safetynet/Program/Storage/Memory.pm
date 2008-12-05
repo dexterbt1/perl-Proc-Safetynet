@@ -1,4 +1,4 @@
-package Safetynet::Program::Storage::Memory;
+package Proc::Safetynet::Program::Storage::Memory;
 use strict;
 use warnings;
 use Carp;
@@ -6,7 +6,7 @@ use Scalar::Util qw/blessed/;
 
 use Moose;
 
-extends 'Safetynet::Program::Storage';
+extends 'Proc::Safetynet::Program::Storage';
 
 has '_children'      => (
     is                  => 'rw',
@@ -38,8 +38,8 @@ sub retrieve {
 sub add {
     my $self = shift;
     my $o = shift;
-    (blessed($o) and ($o->isa('Safetynet::Program')))
-        or croak "add() expects 'Safetynet::Program' instance";
+    (blessed($o) and ($o->isa('Proc::Safetynet::Program')))
+        or croak "add() expects 'Proc::Safetynet::Program' instance";
     my $x = $self->retrieve( $o->name );
     (not defined $x)
         or croak "object already exists";

@@ -4,8 +4,8 @@ use Test::More qw/no_plan/;
 use Data::Dumper;
 
 BEGIN {
-    use_ok 'Safetynet';
-    use_ok 'Safetynet::Program::Storage::TextFile';
+    use_ok 'Proc::Safetynet';
+    use_ok 'Proc::Safetynet::Program::Storage::TextFile';
     use_ok 'POE::Kernel';
     use_ok 'POE::Session';
 }
@@ -16,27 +16,27 @@ my @api_tests = (
     # program management
     [ 'list_programs', undef,                                   { result => [ ] } ],
     [ 'add_program', { 'name' => 'perl-1', 'command' => $^X, }, { result => 1 }  ],
-    [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-1', 'command' => $^X })] } ],
+    [ 'list_programs', undef,                                   { result => [ Proc::Safetynet::Program->new({ name => 'perl-1', 'command' => $^X })] } ],
     [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 1 }  ],
     [ 'list_programs', undef,                                         
         { result => [ 
-                Safetynet::Program->new({ name => 'perl-1', 'command' => $^X }),
-                Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }),
+                Proc::Safetynet::Program->new({ name => 'perl-1', 'command' => $^X }),
+                Proc::Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }),
             ] } ],
     [ 'add_program', { 'name' => 'perl-2', 'command' => $^X, }, { result => 0, error => { message => 'object already exists' } }  ],
     [ 'remove_program', 'perl-1',                               { result => 1 }  ],
-    [ 'list_programs', undef,                                   { result => [ Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }), ] } ],
-    [ 'info_program', 'perl-2',                                 { result => Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
+    [ 'list_programs', undef,                                   { result => [ Proc::Safetynet::Program->new({ name => 'perl-2', 'command' => $^X }), ] } ],
+    [ 'info_program', 'perl-2',                                 { result => Proc::Safetynet::Program->new({ name => 'perl-2', 'command' => $^X })  } ],
     [ 'info_program', 'perl-1',                                 { result => undef, error => { message => 'object does not exist' } } ],
 
     # process management
-    [ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
+    [ 'info_status', 'perl-2',                                  { result => Proc::Safetynet::ProgramStatus->new({ is_running => 0 }) } ],
     [ 'start_program', 'unknown',                               { result => 0, error => { message => 'object does not exist' } } ], # unknown
     [ 'stop_program', 'perl-2',                                 { result => 0, error => { message => 'not running or already issued kill signal' } } ], # not yet started
     [ 'start_program', 'perl-1',                                { result => 0, error => { message => 'object does not exist' } } ], # deleted a while ago
     [ 'start_program', 'perl-2',                                { result => 1 } ],
     [ 'start_program', 'perl-2',                                { result => 0, error => { message => 'already running' } } ], # already started
-    ##[ 'info_status', 'perl-2',                                  { result => Safetynet::ProgramStatus->new({ is_running => 1 }) } ],
+    ##[ 'info_status', 'perl-2',                                  { result => Proc::Safetynet::ProgramStatus->new({ is_running => 1 }) } ],
     [ 'stop_program', 'perl-2',                                 { result => 1 } ],
     [ 'stop_program', 'perl-2',                                 { result => 0, error => { message => 'not running or already issued kill signal' } } ], # already stopped 
     # more ...
@@ -50,14 +50,14 @@ my @api_results = ();
 my @api_stack   = ();
 
 
-my $programs = Safetynet::Program::Storage::TextFile->new(
+my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
     file => '/tmp/test.programs',
 );
 
 my $SUPERVISOR = q{SUPERVISOR};
 my $SHELL   = q{SHELL};
 
-my $supervisor = Safetynet::Supervisor->spawn(
+my $supervisor = Proc::Safetynet::Supervisor->spawn(
     alias       => $SUPERVISOR,
     programs    => $programs,
     binpath     => '/bin:/usr/bin',

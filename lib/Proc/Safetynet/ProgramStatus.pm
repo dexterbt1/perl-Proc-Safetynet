@@ -1,4 +1,4 @@
-package Safetynet::ProgramStatus;
+package Proc::Safetynet::ProgramStatus;
 use strict;
 use warnings;
 use Carp;

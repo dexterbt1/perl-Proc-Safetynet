@@ -1,4 +1,4 @@
-package Safetynet::Program::Storage;
+package Proc::Safetynet::Program::Storage;
 use strict;
 use warnings;
 use Carp;

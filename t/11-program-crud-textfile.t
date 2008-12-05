@@ -5,14 +5,14 @@ use Test::Exception;
 use Data::Dumper;
 
 BEGIN {
-    use_ok 'Safetynet';
-    use_ok 'Safetynet::Program::Storage::TextFile';
+    use_ok 'Proc::Safetynet';
+    use_ok 'Proc::Safetynet::Program::Storage::TextFile';
 }
 
 my $storage_file = "$$.programs";
 
 
-my $storage = Safetynet::Program::Storage::TextFile->new(
+my $storage = Proc::Safetynet::Program::Storage::TextFile->new(
     file => $storage_file,
 );
 
@@ -25,9 +25,9 @@ my $list;
 $list = $storage->retrieve_all();
 is_deeply $list, [ ];
 
-$o = Safetynet::Program->new( name => 'perl', command => $^X );
+$o = Proc::Safetynet::Program->new( name => 'perl', command => $^X );
 ok defined $o;
-isa_ok $o, 'Safetynet::Program';
+isa_ok $o, 'Proc::Safetynet::Program';
 is $o->name, 'perl';
 is $o->command, $^X;
 
@@ -42,14 +42,14 @@ dies_ok {
 } 'duplicate';
 
 $list = $storage->retrieve_all();
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
+is_deeply $list, [ Proc::Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $o = $storage->retrieve( 'non-existent-name' );
 ok not defined $o;
 
 $o = $storage->retrieve( 'perl' );
 ok defined $o;
-isa_ok $o, 'Safetynet::Program';
+isa_ok $o, 'Proc::Safetynet::Program';
 is $o->name, 'perl';
 is $o->command, $^X;
 
@@ -59,13 +59,13 @@ $x = $storage->remove( undef );
 is $x, undef;
 
 $list = $storage->retrieve_all(); # check nothing was deleted
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
+is_deeply $list, [ Proc::Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $x = $storage->remove( 'non-existent-name-here' );
 is $x, undef;
 
 $list = $storage->retrieve_all(); # check nothing was deleted
-is_deeply $list, [ Safetynet::Program->new( name => 'perl', command => $^X ) ];
+is_deeply $list, [ Proc::Safetynet::Program->new( name => 'perl', command => $^X ) ];
 
 $x = $storage->remove( 'perl' );
 $list = $storage->retrieve_all();
@@ -73,13 +73,13 @@ is_deeply $list, [ ], 'remove success';
 
 # add more
 {
-    $storage->add( Safetynet::Program->new( name => 'echo', command => '/bin/echo' ) );
-    $storage->add( Safetynet::Program->new( name => 'cat', command => '/bin/cat' ) );
+    $storage->add( Proc::Safetynet::Program->new( name => 'echo', command => '/bin/echo' ) );
+    $storage->add( Proc::Safetynet::Program->new( name => 'cat', command => '/bin/cat' ) );
 
     $list = $storage->retrieve_all();
     is_deeply $list, [ 
-        Safetynet::Program->new( name => 'cat', command => '/bin/cat' ),
-        Safetynet::Program->new( name => 'echo', command => '/bin/echo' ),
+        Proc::Safetynet::Program->new( name => 'cat', command => '/bin/cat' ),
+        Proc::Safetynet::Program->new( name => 'echo', command => '/bin/echo' ),
     ];
 }
 
@@ -92,8 +92,8 @@ lives_ok {
 {
     $list = $storage->retrieve_all();
     is_deeply $list, [ 
-        Safetynet::Program->new( name => 'cat', command => '/bin/cat' ),
-        Safetynet::Program->new( name => 'echo', command => '/bin/echo' ),
+        Proc::Safetynet::Program->new( name => 'cat', command => '/bin/cat' ),
+        Proc::Safetynet::Program->new( name => 'echo', command => '/bin/echo' ),
     ];
 }
 

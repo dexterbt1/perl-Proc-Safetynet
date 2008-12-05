@@ -1,9 +1,9 @@
-package Safetynet::RpcServer::Unix;
+package Proc::Safetynet::RpcServer::Unix;
 use strict;
 use warnings;
 
-use Safetynet::POEWorker;
-use base qw/Safetynet::POEWorker/;
+use Proc::Safetynet::POEWorker;
+use base qw/Proc::Safetynet::POEWorker/;
 
 use Carp;
 use Data::Dumper;
@@ -15,11 +15,6 @@ use POE::Wheel::SocketFactory;
 use POE::Wheel::ReadWrite;
 use UNIVERSAL::require;
 
-# Start a server, and run it until it's done.
-
-#Server::spawn('/tmp/poe-unix-socket');
-#$poe_kernel->run();
-#exit 0;
 
 sub initialize {
     my $self        = $_[OBJECT];

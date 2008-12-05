@@ -1,4 +1,4 @@
-package Safetynet;
+package Proc::Safetynet;
 
 use 5.008;
 use strict;
@@ -8,30 +8,28 @@ our @ISA = qw();
 
 our $VERSION = '0.01';
 
-use Safetynet::Supervisor;
-use Safetynet::Event;
-use Safetynet::Program;
-use Safetynet::ProgramStatus;
+use Proc::Safetynet::Supervisor;
+use Proc::Safetynet::Event;
+use Proc::Safetynet::Program;
+use Proc::Safetynet::ProgramStatus;
 
-
-# Preloaded methods go here.
 
 1;
+
 __END__
-# Below is stub documentation for your module. You'd better edit it!
 
 =head1 NAME
 
-Safetynet - Perl extension for blah blah blah
+Proc::Safetynet - POE-based utility for babysitting daemons
 
 =head1 SYNOPSIS
 
-  use Safetynet;
+  use Proc::Safetynet;
   blah blah blah
 
 =head1 DESCRIPTION
 
-Stub documentation for Safetynet, created by h2xs. It looks like the
+Stub documentation for Proc::Safetynet, created by h2xs. It looks like the
 author of the extension was negligent enough to leave the stub
 unedited.
 
@@ -51,7 +49,7 @@ If you have a web site set up for your module, mention it here.
 
 =head1 AUTHOR
 
-Dexter Tad-y, E<lt>dexter@E<gt>
+Dexter Tad-y, <dexterbt1@yahoo.com>
 
 =head1 COPYRIGHT AND LICENSE
 

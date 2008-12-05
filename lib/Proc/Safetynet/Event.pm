@@ -1,4 +1,4 @@
-package Safetynet::Event;
+package Proc::Safetynet::Event;
 use strict;
 use warnings;
 use Carp;

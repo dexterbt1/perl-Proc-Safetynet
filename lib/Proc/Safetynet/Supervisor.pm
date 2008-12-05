@@ -1,9 +1,9 @@
-package Safetynet::Supervisor;
+package Proc::Safetynet::Supervisor;
 use strict;
 use warnings;
 
-use Safetynet::POEWorker;
-use base qw/Safetynet::POEWorker/;
+use Proc::Safetynet::POEWorker;
+use base qw/Proc::Safetynet::POEWorker/;
 
 use Carp;
 use Data::Dumper;
@@ -12,9 +12,9 @@ use POE::Session;
 use IO::Handle;
 use Scalar::Util qw/blessed reftype/;
 
-use Safetynet::Event;
-use Safetynet::Program;
-use Safetynet::ProgramStatus;
+use Proc::Safetynet::Event;
+use Proc::Safetynet::Program;
+use Proc::Safetynet::ProgramStatus;
 use POSIX ':sys_wait_h';
 
 sub initialize {
@@ -52,7 +52,7 @@ sub initialize {
         (defined $self->options->{programs})
             or confess "spawn() requires a defined 'programs' parameter";
         (ref($self->options->{programs}) 
-            and $self->options->{programs}->isa( "Safetynet::Program::Storage" ))
+            and $self->options->{programs}->isa( "Proc::Safetynet::Program::Storage" ))
             or confess "spawn() requires a valid 'programs' parameter";
         $self->{programs} = $self->options->{programs};
     }
@@ -221,7 +221,7 @@ sub add_program {
     # TODO: sanitize the param
     # TODO: check whitelist
     eval {
-        my $p = Safetynet::Program->new($program);
+        my $p = Proc::Safetynet::Program->new($program);
         $o = $_[OBJECT]->{programs}->add( $p ) ? 1 : 0;
         if ($o) { 
             # track status
@@ -463,7 +463,7 @@ sub bcast_system_error {
     if (defined $p) {
         $object = $p->name;
     }
-    my $ev = Safetynet::Event->new(
+    my $ev = Proc::Safetynet::Event->new(
         event       => 'system_error',
         object      => $object,
         message     => $message,
@@ -480,7 +480,7 @@ sub bcast_system_info {
     if (defined $p) {
         $object = $p->name;
     }
-    my $ev = Safetynet::Event->new(
+    my $ev = Proc::Safetynet::Event->new(
         event       => 'system_info',
         object      => $object,
         message     => $message,
@@ -494,7 +494,7 @@ sub bcast_process_started {
     my $p       = $_[ARG0];
     my $started = $_[ARG1];
     if ($started) {
-        my $ev = Safetynet::Event->new(
+        my $ev = Proc::Safetynet::Event->new(
             event       => 'process_started',
             object      => $p->name,
         );
@@ -507,7 +507,7 @@ sub bcast_process_stopped {
     my $self    = $_[OBJECT];
     my ($p, $exit_val, $stopped) = @_[ARG0, ARG1, ARG2];
     if ($stopped) {
-        my $ev = Safetynet::Event->new(
+        my $ev = Proc::Safetynet::Event->new(
             event       => 'process_stopped',
             object      => $p->name,
         );
@@ -524,7 +524,7 @@ sub monitor_add_program { # non-POE
     my $name = $p->name() || '';
     if (not exists $self->{monitored}->{$name}) {
         $self->{monitored}->{$name} 
-            = Safetynet::ProgramStatus->new({ is_running => 0 });
+            = Proc::Safetynet::ProgramStatus->new({ is_running => 0 });
         # TODO: start if autostart
     }
 }

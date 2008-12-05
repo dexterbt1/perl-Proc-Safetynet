@@ -1,4 +1,4 @@
-package Safetynet::Program::Storage::TextFile;
+package Proc::Safetynet::Program::Storage::TextFile;
 use strict;
 use warnings;
 use Carp;
@@ -6,7 +6,7 @@ use JSON::XS;
 
 use Moose;
 
-extends 'Safetynet::Program::Storage::Memory';
+extends 'Proc::Safetynet::Program::Storage::Memory';
 
 # NOTE: uses implementation inheritance
 
@@ -58,7 +58,7 @@ sub reload {
             croak "unable to decode programs storage file ($filename): $@";
         }
         foreach my $d (@$in) {
-            my $i = Safetynet::Program->new( $d );
+            my $i = Proc::Safetynet::Program->new( $d );
             $self->_children->{$i->name()} = $i;
         }
     }

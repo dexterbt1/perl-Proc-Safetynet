@@ -1,4 +1,4 @@
-package Safetynet::Program;
+package Proc::Safetynet::Program;
 use strict;
 use warnings;
 use Carp;

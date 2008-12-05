@@ -4,25 +4,25 @@ use Test::More qw/no_plan/;
 use Data::Dumper;
 
 BEGIN {
-    use_ok 'Safetynet';
-    use_ok 'Safetynet::Program::Storage::TextFile';
+    use_ok 'Proc::Safetynet';
+    use_ok 'Proc::Safetynet::Program::Storage::TextFile';
     use_ok 'POE::Kernel';
     use_ok 'POE::Session';
 }
 
 
-my $programs = Safetynet::Program::Storage::TextFile->new(
+my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
     file => '/tmp/test.programs',
 );
 
-$programs->add( Safetynet::Program->new( 'name' => 'a', command => $^X, autostart => 1 ) );
-$programs->add( Safetynet::Program->new( 'name' => 'b', command => $^X, autostart => 1, autorestart => 1, autorestart_wait => 2 ) );
+$programs->add( Proc::Safetynet::Program->new( 'name' => 'a', command => $^X, autostart => 1 ) );
+$programs->add( Proc::Safetynet::Program->new( 'name' => 'b', command => $^X, autostart => 1, autorestart => 1, autorestart_wait => 2 ) );
 
 
 my $SUPERVISOR = q{SUPERVISOR};
 my $SHELL   = q{SHELL};
 
-my $supervisor = Safetynet::Supervisor->spawn(
+my $supervisor = Proc::Safetynet::Supervisor->spawn(
     alias       => $SUPERVISOR,
     programs    => $programs,
     binpath     => '/bin:/usr/bin',
