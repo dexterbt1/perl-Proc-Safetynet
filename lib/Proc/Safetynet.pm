@@ -20,32 +20,44 @@ __END__
 
 =head1 NAME
 
-Proc::Safetynet - POE-based utility for babysitting daemons
+Proc::Safetynet - POE-based utility for supervising processes
 
 =head1 SYNOPSIS
 
-  use Proc::Safetynet;
-  blah blah blah
+    use Proc::Safetynet;
+    use Proc::Safetynet::Program::Storage::TextFile;
+
+    # load programs
+    my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
+        file            => "/etc/my.programs
+    );
+    $programs->reload;
+
+    # start supervisor
+    my $supervisor = Proc::Safetynet::Supervisor->spawn(
+        binpath         => "/bin:/usr/bin",
+        programs        => $programs,
+    );
+
+    POE::Kernel->run();
 
 =head1 DESCRIPTION
 
-Stub documentation for Proc::Safetynet, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
+L<Proc::Safetynet> is a utility framework for building programs that
+supervises or "babysits" other processes. Supervision tasks can include
+process management (start / stop) and program provisioning (add / remove
+applications).
 
-Blah blah blah.
-
+L<Proc::Safetynet> is especially useful for monitoring and auto-restarting 
+long-running server programs (e.g. FastCGI scripts).
 
 =head1 SEE ALSO
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
+See the accompanying C<bin/safetynetd.pl> script as part of the 
+L<Proc::Safetynet> distribution for the actual supervisor daemon.
 
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+L<Proc::Safetynet> heavily borrows concepts and implementation details
+from the Supervisord project - http://supervisord.org
 
 =head1 AUTHOR
 
