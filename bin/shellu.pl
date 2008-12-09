@@ -51,7 +51,7 @@ my %print_result_of = (
             push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
         }
         if ($res) {
-            push @o, "OK.";
+            push @o, "start OK.";
         }
         return @o;
     },
@@ -63,7 +63,46 @@ my %print_result_of = (
             push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
         }
         if ($res) {
-            push @o, "OK.";
+            push @o, "stop OK.";
+        }
+        return @o;
+    },
+    'add_program' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+        }
+        if ($res) {
+            push @o, "add OK.";
+        }
+        return @o;
+    },
+    'remove_program' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+        }
+        if ($res) {
+            push @o, "remove OK.";
+        }
+        return @o;
+    },
+    'list_programs' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        my $i = 1;
+        foreach my $p (@$res) {
+            push @o, sprintf( "%s", $p->{name});
+            delete $p->{name};
+            foreach my $k (sort keys %$p) {
+                push @o, sprintf( "      %-20s = %s", $k, $p->{$k});
+            }
+            $i++;
         }
         return @o;
     },
@@ -227,24 +266,35 @@ sub console_input {
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
-            ($input =~ /^add\s+(.*)$/) and do {
+            ($input =~ /^info-all$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "list_programs", "params" => [ ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            ($input =~ /^add\s+(\{.*\})$/) and do {
                 my $id = next_id(); 
                 my $p = $1;
-                $cmd = { "method" => "add_program", "params" => [ $1 ], "id" => $id };
+                eval {
+                    $p = JSON::XS::decode_json( $p );
+                };
+                if ($@) {
+                    $heap->{cli_wheel}->put("ERROR: ".clean_eval_error($@));
+                    last SWITCH;
+                }
+                $cmd = { "method" => "add_program", "params" => [ $p ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
             
             last SWITCH;
         }
+        $heap->{cli_wheel}->addhistory($input);
+        #$heap->{cli_wheel}->put("You Said: $input");
         if (defined $cmd) {
-            $heap->{cli_wheel}->addhistory($input);
-            #$heap->{cli_wheel}->put("You Said: $input");
             $heap->{io_wheel}->put($cmd);
         }
         else {
-            $heap->{cli_wheel}->addhistory($input);
-            #$heap->{cli_wheel}->put("You Said: $input");
             $heap->{cli_wheel}->put("ERROR: Invalid Command ($input)");
         }
     } elsif ( $exception eq 'cancel' ) {
@@ -265,4 +315,11 @@ sub console_input {
 my $idcount = 0;
 sub next_id {
     $idcount++;
+}
+
+
+sub clean_eval_error {
+    my $err = shift;
+    my ($e) = ($err =~ m/^(.*)\s+at\s+.*\s+line\s+\d+/);
+    return $e;
 }
