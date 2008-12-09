@@ -193,7 +193,7 @@ sub do_postback {
     my $res = { result => $result };
     if (defined $error) { 
         my $cerr = $error;
-        if ($error =~ m/^(.*)\s+at\s.*line\s\d+$/) {
+        if ($error =~ m/^(.*)\s+at\s.*line\s\d+[\s\n]*$/m) {
             ($cerr) = $1;
         }
         $res->{error} = { message => $cerr };

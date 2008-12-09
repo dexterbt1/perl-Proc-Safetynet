@@ -227,6 +227,14 @@ sub console_input {
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
+            ($input =~ /^add\s+(.*)$/) and do {
+                my $id = next_id(); 
+                my $p = $1;
+                $cmd = { "method" => "add_program", "params" => [ $1 ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            
             last SWITCH;
         }
         if (defined $cmd) {

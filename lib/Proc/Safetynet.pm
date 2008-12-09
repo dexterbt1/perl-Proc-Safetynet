@@ -6,7 +6,7 @@ use warnings;
 
 our @ISA = qw();
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Proc::Safetynet::Supervisor;
 use Proc::Safetynet::Event;
@@ -29,7 +29,7 @@ Proc::Safetynet - POE-based utility for supervising processes
 
     # load programs
     my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
-        file            => "/etc/my.programs
+        file            => "/etc/my.programs",
     );
     $programs->reload;
 
@@ -55,6 +55,7 @@ long-running server programs (e.g. FastCGI scripts).
 
 See the accompanying C<bin/safetynetd.pl> script as part of the 
 L<Proc::Safetynet> distribution for the actual supervisor daemon.
+The distribution also includes sample configuration files under C<etc>.
 
 L<Proc::Safetynet> heavily borrows concepts and implementation details
 from the Supervisord project - http://supervisord.org
