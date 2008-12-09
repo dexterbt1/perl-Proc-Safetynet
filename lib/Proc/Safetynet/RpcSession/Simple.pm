@@ -26,6 +26,7 @@ my $RPC_METHOD = {
     'info_program'                      => 1,
     'add_program'                       => 1,
     'remove_program'                    => 1,
+    'commit_programs'                   => 1,
 };
 
 

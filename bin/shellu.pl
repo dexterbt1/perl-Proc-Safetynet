@@ -43,12 +43,24 @@ my %print_result_of = (
         }
         return @o;
     },
+    'info_status' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: (status): %s", $inp->{error}->{message} );
+        }
+        if (exists $res->{is_running}) {
+            push @o, sprintf( "%s", $res->{is_running} ? "running" : "not running" );
+        }
+        return @o;
+    },
     'start_program' => sub {
         my $inp = shift;
         my $res = $inp->{result};
         my @o = ();
         if (exists $inp->{error}) {
-            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+            push @o, sprintf("ERROR: (start): %s", $inp->{error}->{message} );
         }
         if ($res) {
             push @o, "start OK.";
@@ -60,10 +72,22 @@ my %print_result_of = (
         my $res = $inp->{result};
         my @o = ();
         if (exists $inp->{error}) {
-            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+            push @o, sprintf("ERROR: (stop): %s", $inp->{error}->{message} );
         }
         if ($res) {
             push @o, "stop OK.";
+        }
+        return @o;
+    },
+    'commit_programs' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: (commit): %s", $inp->{error}->{message} );
+        }
+        if ($res) {
+            push @o, "commit OK.";
         }
         return @o;
     },
@@ -72,7 +96,7 @@ my %print_result_of = (
         my $res = $inp->{result};
         my @o = ();
         if (exists $inp->{error}) {
-            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+            push @o, sprintf("ERROR: (add): %s", $inp->{error}->{message} );
         }
         if ($res) {
             push @o, "add OK.";
@@ -84,7 +108,7 @@ my %print_result_of = (
         my $res = $inp->{result};
         my @o = ();
         if (exists $inp->{error}) {
-            push @o, sprintf("ERROR: %s", $inp->{error}->{message} );
+            push @o, sprintf("ERROR: (remove): %s", $inp->{error}->{message} );
         }
         if ($res) {
             push @o, "remove OK.";
@@ -103,6 +127,23 @@ my %print_result_of = (
                 push @o, sprintf( "      %-20s = %s", $k, $p->{$k});
             }
             $i++;
+        }
+        return @o;
+    },
+    'info_program' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        my $p = $res;
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: (info): %s", $inp->{error}->{message} );
+        }
+        if (exists $p->{name}) {
+            push @o, sprintf( "%s", $p->{name});
+            delete $p->{name};
+            foreach my $k (sort keys %$p) {
+                push @o, sprintf( "      %-20s = %s", $k, $p->{$k});
+            }
         }
         return @o;
     },
@@ -254,6 +295,12 @@ sub console_input {
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
+            ($input =~ /^status\s+(\w+)$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "info_status", "params" => [ $1 ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
             ($input =~ /^start\s+(\w+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "start_program", "params" => [ $1 ], "id" => $id };
@@ -283,6 +330,24 @@ sub console_input {
                     last SWITCH;
                 }
                 $cmd = { "method" => "add_program", "params" => [ $p ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            ($input =~ /^remove\s+(\w+)$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "remove_program", "params" => [ $1 ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            ($input =~ /^info\s+(\w+)$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "info_program", "params" => [ $1 ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            ($input =~ /^commit$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "commit_programs", "params" => [ ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };

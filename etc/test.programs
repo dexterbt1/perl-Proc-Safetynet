@@ -1,15 +1,23 @@
 [
    {
-      "eventlistener" : 1,
       "priority" : "999",
-      "autostart" : 0,
-      "autorestart" : 0,
-      "name" : "evlog",
-      "command" : "/home/dexter/pl/evlog /tmp/evlog"
+      "autorestart_wait" : "10",
+      "autostart" : 1,
+      "autorestart" : 1,
+      "name" : "cat",
+      "command" : "/bin/cat"
    },
    {
-      "eventlistener" : 1,
+      "autorestart_wait" : "10",
+      "autostart" : 0,
+      "autorestart" : 1,
+      "name" : "hello",
+      "command" : "cat"
+   },
+   {
       "priority" : "999",
+      "eventlistener" : 1,
+      "autorestart_wait" : "10",
       "autostart" : 1,
       "autorestart" : 1,
       "name" : "log2",
@@ -17,13 +25,7 @@
    },
    {
       "priority" : "999",
-      "autostart" : 1,
-      "autorestart" : 1,
-      "name" : "cat",
-      "command" : "/bin/cat"
-   },
-   {
-      "priority" : "999",
+      "autorestart_wait" : "10",
       "autostart" : 1,
       "autorestart" : 1,
       "name" : "sort",

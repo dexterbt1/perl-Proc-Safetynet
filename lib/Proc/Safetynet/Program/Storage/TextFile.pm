@@ -20,7 +20,7 @@ has 'file' => (
 sub commit {
     my $self = shift;
     {
-        my $filename = $self->file();
+        my ($filename) = ($self->file() =~ /^(.*)$/);
         open my $fh, ">$filename"
             or croak "unable to open storage file: $filename: $!";
         
