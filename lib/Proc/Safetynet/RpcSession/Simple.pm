@@ -76,7 +76,11 @@ sub got_client_input {
 sub got_client_error {
     my ( $self, $syscall, $errno, $error ) = @_[ OBJECT, ARG0 .. ARG2 ];
     $error = "Normal disconnection." unless $errno;
-    warn "Server session encountered $syscall error $errno: $error\n";
+    $_[KERNEL]->post( 
+        $self->{supervisor},
+        'bcast_system_info', 
+        "Server session encountered $syscall error $errno: $error\n",
+    );
     delete $self->{client};
     $self->yield( 'shutdown' );
 }

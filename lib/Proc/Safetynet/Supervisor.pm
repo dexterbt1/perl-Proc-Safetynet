@@ -12,6 +12,7 @@ use POE::Session;
 use IO::Handle;
 use Scalar::Util qw/blessed reftype/;
 
+use File::Spec;
 use Proc::Safetynet::Event;
 use Proc::Safetynet::Program;
 use Proc::Safetynet::ProgramStatus;
@@ -74,6 +75,26 @@ sub initialize {
         }
         $ENV{PATH} = join(':', @p);
     }
+
+    # verify stderr_logpath
+    {
+        my $lpath = $self->options->{stderr_logpath} || File::Spec->tmpdir();
+        my ($logpath) = ($lpath =~ /^(.*)$/);
+        (-d $logpath)
+            or confess "stderr_logpath ($logpath) option does not exist";
+        $self->{stderr_logpath} = $logpath;
+    }
+
+    # verify stderr_logext
+    {
+        my $x = $self->options->{stderr_logext} || '.stderr';
+        # log ext should match the patter (.\w+)
+        my ($logext) = ($x =~ /^(\.\w+)$/);
+        ($logext)
+            or confess "stderr_logext ($logext) should match pattern ".'"\.\w+"';
+        $self->{stderr_logext} = $logext;
+    }
+
     # start monitoring
     $self->{monitored} = { };
     $self->{killed} = { };
@@ -295,6 +316,7 @@ sub info_status {
 
 sub start_program { 
     my $program_name = $_[ARG2];
+    my $self = $_[OBJECT];
     my $p = undef;
     my $o = 0;
     my $e = undef;
@@ -327,6 +349,22 @@ sub start_program {
                     $e = "unable to create pipe: $@";
                     last SPAWN; 
                 }
+            }
+            # redirect stderr
+            eval {
+                my ($pname)  = ($program_name =~ /^(.*)$/);
+                my $filename = File::Spec->catfile( 
+                    $self->{stderr_logpath},
+                    join('',$pname,$self->{stderr_logext}),
+                );
+                open STDERR, ">>$filename"
+                    or die "($filename): $!";
+            };
+            if ($@) {
+                warn "$$: unable to redirect stderr: $@";
+                $_[KERNEL]->yield( 'bcast_system_error', "unable to redirect stderr: $@", $p );
+                $e = "unable to redirect stderr: $@";
+                last SPAWN; 
             }
             # fork
             # ----

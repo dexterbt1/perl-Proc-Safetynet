@@ -1,6 +1,8 @@
-id              = test
-programs        = etc/test.programs
-binpath         = /bin:/home/dexter/bin
+id                  = test
+programs            = etc/test.programs
+binpath             = /bin:/usr/bin:/home/dexter/bin
+stderr_logpath      = /home/dexter/log/stderr
+stderr_logext       = .stderr
 <unix_server>
-    socket          = /tmp/safetynet.sock
+    socket              = /tmp/safetynet.sock
 </unix_server>

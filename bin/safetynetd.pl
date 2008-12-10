@@ -26,10 +26,10 @@ my $config;
         or die "unable to open config file: $config_file: $!";
     flock($lockfh, LOCK_EX|LOCK_NB)
         or exit(2); # unable to lock
-    print STDERR "$$: started...\n"; # we have acquired the lock
     my $rc = Config::General->new( $config_file );
     $config = { $rc->getall() };
 }
+
 
 my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
     file        => $config->{programs},
@@ -42,6 +42,8 @@ my $supervisor = Proc::Safetynet::Supervisor->spawn(
     alias           => q{SUPERVISOR},
     binpath         => $config->{binpath},
     programs        => $programs,
+    stderr_logpath  => $config->{stderr_logpath},
+    stderr_logext   => $config->{stderr_logext},
 );
 if (exists $config->{unix_server}) {
     Proc::Safetynet::RpcServer::Unix->spawn(

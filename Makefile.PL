@@ -10,6 +10,7 @@ WriteMakefile(
         'JSON::XS'                          => 2.21,
         'POE'                               => 1.0003,
         'Moose'                             => 0.51,
+        'File::Spec'                        => 3.12,
         'POE::Filter::JSON::Incr'           => 0.02,
     }, 
     EXE_FILES         => [

@@ -6,7 +6,7 @@ use warnings;
 
 our @ISA = qw();
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Proc::Safetynet::Supervisor;
 use Proc::Safetynet::Event;
