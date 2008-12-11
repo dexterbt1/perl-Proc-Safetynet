@@ -26,6 +26,7 @@ sub initialize {
     $_[KERNEL]->state( 'list_programs'                  => $self );
     $_[KERNEL]->state( 'add_program'                    => $self );
     $_[KERNEL]->state( 'remove_program'                 => $self );
+    $_[KERNEL]->state( 'update_program'                 => $self );
     $_[KERNEL]->state( 'info_program'                   => $self );
     $_[KERNEL]->state( 'list_status'                    => $self );
     $_[KERNEL]->state( 'info_status'                    => $self );
@@ -215,7 +216,7 @@ sub do_postback {
     my $res = { result => $result };
     if (defined $error) { 
         my $cerr = $error;
-        if ($error =~ m/^(.*)\s+at\s.*line\s\d+[\s\n]*$/m) {
+        if ($error =~ m/^(.*)\s+at\s.*line\s\d+[\.\s\n]*$/m) {
             ($cerr) = $1;
         }
         $res->{error} = { message => $cerr };
@@ -278,6 +279,42 @@ sub info_program {
     if (not defined $o) {
         $e = "object does not exist";
     }
+    $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
+}
+
+sub update_program {
+    my $program_name    = $_[ARG2];
+    my $fieldval        = $_[ARG3];
+    my $o = 0;
+    my $e = undef;
+    my $allowed_updates = {
+        command             => 1,
+        autostart           => 1,
+        autorestart         => 1,
+        autorestart_wait    => 1,
+        priority            => 1,
+        eventlistener       => 1,
+    };
+    eval {
+        # check field values
+        (ref($fieldval) eq 'HASH')
+            or die "field expected as HASH";
+        my $p = $_[OBJECT]->{programs}->retrieve( $program_name );
+        (defined $p)
+            or die "object does not exist";
+        # check allowed field values
+        foreach my $k (keys %$fieldval) {
+            if (not exists $allowed_updates->{$k}) {
+                die "updating field '$k' not allowed";
+            }
+        }
+        # update
+        foreach my $k (keys %$fieldval) {
+            $p->{$k} = $fieldval->{$k};
+        }
+        $o = 1;
+    };
+    if ($@) { $e = $@; }
     $_[KERNEL]->yield( 'do_postback', @_[ARG0, ARG1], $o, $e );
 }
 

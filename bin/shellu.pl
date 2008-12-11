@@ -115,6 +115,18 @@ my %print_result_of = (
         }
         return @o;
     },
+    'update_program' => sub {
+        my $inp = shift;
+        my $res = $inp->{result};
+        my @o = ();
+        if (exists $inp->{error}) {
+            push @o, sprintf("ERROR: (update): %s", $inp->{error}->{message} );
+        }
+        if ($res) {
+            push @o, "update OK.";
+        }
+        return @o;
+    },
     'list_programs' => sub {
         my $inp = shift;
         my $res = $inp->{result};
@@ -330,6 +342,21 @@ sub console_input {
                     last SWITCH;
                 }
                 $cmd = { "method" => "add_program", "params" => [ $p ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                last SWITCH;
+            };
+            ($input =~ /^update\s+(\w+)\s+(\{.*\})$/) and do {
+                my $id = next_id(); 
+                my $pname = $1;
+                my $p = $2;
+                eval {
+                    $p = JSON::XS::decode_json( $p );
+                };
+                if ($@) {
+                    $heap->{cli_wheel}->put("ERROR: ".clean_eval_error($@));
+                    last SWITCH;
+                }
+                $cmd = { "method" => "update_program", "params" => [ $pname, $p ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
