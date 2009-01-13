@@ -15,6 +15,7 @@ WriteMakefile(
     }, 
     EXE_FILES         => [
         'bin/safetynetd.pl',
+        'bin/safetynet-shell.pl',
     ],
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Proc/Safetynet.pm', # retrieve abstract from module

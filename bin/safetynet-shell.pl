@@ -24,8 +24,14 @@ use Data::Dumper;
 # Specify a UNIX rendezvous to use.  This is the location the client
 # will connect to, and it should correspond to the location a server
 # is listening to.
+my $usage = <<USAGE;
+Usage: $0 <path/to/safetynet.unixsocket>
+USAGE
 
 my $rendezvous = shift @ARGV;
+if (not $rendezvous) {
+    die $usage;
+}
 
 # Create the session that will pass information between the console
 # and the server.  The create() constructor maps a number of events to
@@ -161,6 +167,103 @@ my %print_result_of = (
     },
 );
 
+
+my $HELP_COMMANDS = {
+    'status-all' => [
+            'Parameters: None',
+            'Example: status-all',
+            '',
+            'Show the status of all programs provisioned'
+        ],
+    status      => [
+            'Parameters: <program_name>',
+            'Example: status mydaemond',
+            '',
+            'Show the status of specific program named "program_name"',
+        ],
+    start       => [
+            'Parameters: <program_name>',
+            'Example: start mydaemond',
+            '',
+            'Start the specific program named "program_name" if not yet started',
+        ],
+    stop        => [
+            'Parameters: <program_name>',
+            'Example: stop mydaemond',
+            '',
+            'Stop the specific program named "program_name" if not yet stopped',
+        ],
+    'info-all'  => [
+            'Parameters: None',
+            'Example: info-all',
+            '',
+            'Show detailed information on all programs provisioned.',
+        ],
+    info        => [
+            'Parameters: <program_name>',
+            'Example: info mydaemond',
+            '',
+            'Shows the detailed information of a specific program named "program_name"',
+        ],
+    add         => [
+            'Parameters: <json_object_defintion>',
+            'Example: add { "name" : "mydaemond", "command" : "/usr/local/bin/mydaemond.pl -x -c /etc/someconfig.rc" }',
+            '',
+            'Add a new program to be supervised. The JSON object fields are as follows:',
+            '',
+            '   name                =   required, string',
+            '                           unique name used to identify a program instance',
+            '   command             =   required, string',
+            '                           shell command that is executed to run a program.',
+            '                           Services must foreground and MUST NOT daemonize',
+            '                           for SIGCHLD handling to work.',
+            '   autostart           =   optional, boolean 1 or 0, defaults to 0',
+            '                           if 1 then program will be started when the',
+            '                           safetynet supervisor starts',
+            '   autorestart         =   optional, boolean 1 or 0, defaults to 0',
+            '                           if 1 then program will be restarted automatically',
+            '                           when program instance dies (SIGCHLD caught).',
+            '   autorestart_wait    =   optional, integer, defaults to 10',
+            '                           time in seconds for the safetynet supervisor',
+            '                           to wait before restarting the program',
+            '   eventlistener       =   optional, boolean 1 or 0, defaults to 0',
+            '                           indicates whether or not this program instance is',
+            '                           an event listener. Safetynet events are broadcasted to',
+            '                           all eventlisteners via their STDIN',
+        ],
+    update      => [
+            'Parameters: <program_name> <json_object_defintion>',
+            'Example: update mydaemond { "autostart" : 1, "autorestart" : 1 }',
+            '',
+            'Updates a new program definition with an updated.',
+            'See the "add" command for more information on the json_object fields ("help add")',
+        ],
+    remove      => [
+            'Parameters: <program_name>',
+            'Example: remove mydaemond',
+            '',
+            'Remove the program with the name "program_name"',
+        ],
+    commit      => [
+            'Parameters: None',
+            'Example: commit',
+            '',
+            'Persists the program definitions by committing (writing) them to disk',
+        ],
+    quit        => [
+            'Parameters: None',
+            'Example: quit',
+            '',
+            'Exit shell',
+        ],
+    help        => [
+            'Parameters: help <command>',
+            'Example: help add',
+            '',
+            'Provides information on the shell commands available',
+        ],
+};
+
 POE::Session->create
   ( inline_states =>
       { _start => \&client_init,
@@ -176,6 +279,7 @@ POE::Session->create
 
 $poe_kernel->run();
 exit 0;
+
 
 # The client_init() function is called when POE sends a "_start" event
 # to the session.  This happens automatically whenever a session is
@@ -231,6 +335,7 @@ sub socket_connected {
 
     $heap->{cli_wheel} = POE::Wheel::ReadLine->new( InputEvent => 'cli_input' );
     $heap->{cli_wheel}->get("=> ");
+    $heap->{cli_wheel}->put("Connected. (Type \"help\" for more information. \"quit\" to quit)");
 }
 
 # socket_input() is called to handle "sock_input" events.  These
@@ -278,25 +383,15 @@ sub socket_error {
     die "Client socket encountered $syscall error $errno: $error\n";
 }
 
-# Finally, the console_input() function is called to handle
-# "cli_input" events.  These events are created when
-# POE::Wheel::ReadLine (created in socket_connected()) receives user
-# input from the console.
 
-# Plain input is registered with ReadLine's input history, echoed back
-# to the console, and sent to the server.  Exceptions, such as when
-# the user presses Ctrl+C to interrupt the program, are also handled.
 
-# POE::Wheel::ReadLine events include two parameters other than the
-# usual KERNEL, HEAP, etc.  The ARG0 parameter contains plain input.
-# If that's undefined, then ARG1 will contain an exception.
 
 sub console_input {
     my ( $heap, $input, $exception ) = @_[ HEAP, ARG0, ARG1 ];
 
-
     if ( defined $input ) {
         my $cmd;
+        my $cmd_processed = 0;
         $input =~ s/^\s*//g; # trim
         $input =~ s/\s*$//g;
         
@@ -305,33 +400,46 @@ sub console_input {
                 my $id = next_id(); 
                 $cmd = { "method" => "list_status", "params" => [ ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
                 last SWITCH;
             };
             ($input =~ /^status\s+(\w+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "info_status", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
                 last SWITCH;
             };
             ($input =~ /^start\s+(\w+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "start_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
                 last SWITCH;
             };
             ($input =~ /^stop\s+(\w+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "stop_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
                 last SWITCH;
             };
             ($input =~ /^info-all$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "list_programs", "params" => [ ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
+                last SWITCH;
+            };
+            ($input =~ /^info\s+(\w+)$/) and do {
+                my $id = next_id(); 
+                $cmd = { "method" => "info_program", "params" => [ $1 ], "id" => $id };
+                $heap->{cmd_sent}->{$id} = $cmd;
+                $cmd_processed = 1;
                 last SWITCH;
             };
             ($input =~ /^add\s+(\{.*\})$/) and do {
+                $cmd_processed = 1;
                 my $id = next_id(); 
                 my $p = $1;
                 eval {
@@ -346,6 +454,7 @@ sub console_input {
                 last SWITCH;
             };
             ($input =~ /^update\s+(\w+)\s+(\{.*\})$/) and do {
+                $cmd_processed = 1;
                 my $id = next_id(); 
                 my $pname = $1;
                 my $p = $2;
@@ -361,24 +470,47 @@ sub console_input {
                 last SWITCH;
             };
             ($input =~ /^remove\s+(\w+)$/) and do {
+                $cmd_processed = 1;
                 my $id = next_id(); 
                 $cmd = { "method" => "remove_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
-            ($input =~ /^info\s+(\w+)$/) and do {
-                my $id = next_id(); 
-                $cmd = { "method" => "info_program", "params" => [ $1 ], "id" => $id };
-                $heap->{cmd_sent}->{$id} = $cmd;
-                last SWITCH;
-            };
             ($input =~ /^commit$/) and do {
+                $cmd_processed = 1;
                 my $id = next_id(); 
                 $cmd = { "method" => "commit_programs", "params" => [ ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
-            
+
+            # -------------------------
+
+            ($input =~ /^quit|\\q|q$/) and do {
+                $cmd_processed = 1;
+                $heap->{cli_wheel}->put("Exit.");
+                exit(0);
+                last SWITCH;
+            };
+            ($input =~ /^(help|\\h)\s+(\w+)$/) and do {
+                $cmd_processed = 1;
+                my $shell_command = $2;
+                if (exists $HELP_COMMANDS->{$shell_command}) {
+                    $heap->{cli_wheel}->put( join("\n", map { "    $_" } @{$HELP_COMMANDS->{$shell_command}}) );
+                }
+                else {
+                    $heap->{cli_wheel}->put("ERROR: Shell command \"$shell_command\" not found.\nType \"help <command>\" for for a list of commands.");
+                }
+                
+                last SWITCH;
+            };
+            ($input =~ /^help|\\h|\/\?$/) and do {
+                $cmd_processed = 1;
+                my $command_list = join("\n", map { "    ".$_ } sort keys %$HELP_COMMANDS);
+                $heap->{cli_wheel}->put("Type \"help <command>\" for more information.\nCommands available:\n$command_list");
+                last SWITCH;
+            };
+            $cmd_processed = 0;
             last SWITCH;
         }
         $heap->{cli_wheel}->addhistory($input);
@@ -386,7 +518,7 @@ sub console_input {
         if (defined $cmd) {
             $heap->{io_wheel}->put($cmd);
         }
-        else {
+        if (not $cmd_processed) { 
             $heap->{cli_wheel}->put("ERROR: Invalid Command ($input)");
         }
     } elsif ( $exception eq 'cancel' ) {

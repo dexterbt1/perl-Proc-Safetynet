@@ -77,23 +77,33 @@ sub initialize {
         $ENV{PATH} = join(':', @p);
     }
 
-    # verify stderr_logpath
+    # verify logpath
     {
-        my $lpath = $self->options->{stderr_logpath} || File::Spec->tmpdir();
+        my $lpath = $self->options->{logpath} || File::Spec->tmpdir();
         my ($logpath) = ($lpath =~ /^(.*)$/);
         (-d $logpath)
-            or confess "stderr_logpath ($logpath) option does not exist";
-        $self->{stderr_logpath} = $logpath;
+            or confess "logpath ($logpath) option does not exist";
+        $self->{logpath} = $logpath;
     }
 
-    # verify stderr_logext
+    # verify logext_stderr
     {
-        my $x = $self->options->{stderr_logext} || '.stderr';
-        # log ext should match the patter (.\w+)
+        my $x = $self->options->{logext_stderr} || '.stderr';
+        # log ext should match the pattern (.\w+)
         my ($logext) = ($x =~ /^(\.\w+)$/);
         ($logext)
-            or confess "stderr_logext ($logext) should match pattern ".'"\.\w+"';
-        $self->{stderr_logext} = $logext;
+            or confess "logext_stderr ($logext) should match pattern ".'"\.\w+"';
+        $self->{logext_stderr} = $logext;
+    }
+
+    # verify logext_stdout
+    {
+        my $x = $self->options->{logext_stderr} || '.stdout';
+        # log ext should match the pattern (.\w+)
+        my ($logext) = ($x =~ /^(\.\w+)$/);
+        ($logext)
+            or confess "logext_stdout ($logext) should match pattern ".'"\.\w+"';
+        $self->{logext_stdout} = $logext;
     }
 
     # start monitoring
@@ -130,15 +140,13 @@ sub nop {
 
 sub sig_ignore {
     # ignore signals for now ...
-    # TODO: bcast this as event
-    warn "$$ signalled\n";
+    $_[KERNEL]->yield( 'bcast_system_info', "unexpected signal ignored" );
     $_[KERNEL]->sig_handled();
 }
 
 
 sub sig_PIPE {
     # ignore signals for now ...
-    warn "$$ signalled SIGPIPE\n";
     $_[KERNEL]->yield( 'bcast_system_info', "SIGPIPE warning" );
     $_[KERNEL]->sig_handled();
 }
@@ -381,7 +389,6 @@ sub start_program {
                         or die $!;
                 };
                 if ($@) {
-                    warn "$$: unable to pipe: $@";
                     $_[KERNEL]->yield( 'bcast_system_error', "unable to create pipe: $@", $p );
                     $e = "unable to create pipe: $@";
                     last SPAWN; 
@@ -391,23 +398,36 @@ sub start_program {
             eval {
                 my ($pname)  = ($program_name =~ /^(.*)$/);
                 my $filename = File::Spec->catfile( 
-                    $self->{stderr_logpath},
-                    join('',$pname,$self->{stderr_logext}),
+                    $self->{logpath},
+                    join('',$pname,$self->{logext_stderr}),
                 );
                 open STDERR, ">>$filename"
                     or die "($filename): $!";
             };
             if ($@) {
-                warn "$$: unable to redirect stderr: $@";
                 $_[KERNEL]->yield( 'bcast_system_error', "unable to redirect stderr: $@", $p );
                 $e = "unable to redirect stderr: $@";
+                last SPAWN; 
+            }
+            # redirect stdout
+            eval {
+                my ($pname)  = ($program_name =~ /^(.*)$/);
+                my $filename = File::Spec->catfile( 
+                    $self->{logpath},
+                    join('',$pname,$self->{logext_stdout}),
+                );
+                open STDOUT, ">>$filename"
+                    or die "($filename): $!";
+            };
+            if ($@) {
+                $_[KERNEL]->yield( 'bcast_system_error', "unable to redirect stdout: $@", $p );
+                $e = "unable to redirect stdout: $@";
                 last SPAWN; 
             }
             # fork
             # ----
             my $pid = fork;
             if (not defined $pid) {
-                warn "$$: unable to fork: $!";
                 $_[KERNEL]->yield( 'bcast_system_error', "unable to fork: $@", $p );
                 $e = "unable to fork: $!";
                 last SPAWN;

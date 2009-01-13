@@ -11,7 +11,7 @@ use Config::General;
 use Data::Dumper;
 
 my $usage = <<EOF;
-Usage: $0 <config_file>
+Usage: $0 <path/to/config_file>
 EOF
 
 my $lockfh;
@@ -30,11 +30,20 @@ my $config;
     $config = { $rc->getall() };
 }
 
-
-my $programs = Proc::Safetynet::Program::Storage::TextFile->new(
-    file        => $config->{programs},
-);
-$programs->reload;
+my $programs;
+{
+    # validate programs storage
+    my $programs_storagefile = $config->{programs} || '';
+    eval {
+        $programs = Proc::Safetynet::Program::Storage::TextFile->new(
+            file        => $programs_storagefile,
+        );
+        $programs->reload;
+    };
+    if ($@) {
+        die $@;
+    }
+}
 
 # ---------
 
