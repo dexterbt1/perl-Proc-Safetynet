@@ -4,10 +4,16 @@ use warnings;
 use Carp;
 
 use Moose;
+use Moose::Util::TypeConstraints;
+
+subtype 'ProgramName'
+    => as 'Str'
+    => where { ($_ =~ /^[\w\-\_]+$/) ? 1 : 0 };
+
 
 has 'name' => (
     is          => 'rw',
-    isa         => 'Str',
+    isa         => 'ProgramName',
     required    => 1,
 );
 

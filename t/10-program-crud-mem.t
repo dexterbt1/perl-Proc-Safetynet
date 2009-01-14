@@ -1,6 +1,6 @@
 use strict;
 use warnings;
-use Test::More tests => 24;
+use Test::More qw/no_plan/;
 use Test::Exception;
 
 BEGIN {
@@ -87,6 +87,29 @@ lives_ok {
 lives_ok {
     $storage->reload();
 } 'reloaded';
+
+# add errors
+lives_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'valid', command => '/bin/cat' ) );
+} 'add-stress-valid1';
+lives_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'valid-2', command => '/bin/cat' ) );
+} 'add-stress-valid2';
+lives_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'valid_3', command => '/bin/cat' ) );
+} 'add-stress-valid3';
+lives_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => '4valid_3', command => '/bin/cat' ) );
+} 'add-stress-valid4';
+dies_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'in-valid+', command => '/bin/cat' ) );
+} 'add-stress-invalid1';
+dies_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'in=valid', command => '/bin/cat' ) );
+} 'add-stress-invalid2';
+dies_ok {
+    $storage->add( Proc::Safetynet::Program->new( name => 'in=valid`~!@#$%^&*()+=[]{}|\\/<>,.', command => '/bin/cat' ) );
+} 'add-stress-invalid3';
 
 
 

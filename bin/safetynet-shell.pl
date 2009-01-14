@@ -403,21 +403,21 @@ sub console_input {
                 $cmd_processed = 1;
                 last SWITCH;
             };
-            ($input =~ /^status\s+(\w+)$/) and do {
+            ($input =~ /^status\s+([\w\-\_]+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "info_status", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 $cmd_processed = 1;
                 last SWITCH;
             };
-            ($input =~ /^start\s+(\w+)$/) and do {
+            ($input =~ /^start\s+([\w\-\_]+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "start_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
                 $cmd_processed = 1;
                 last SWITCH;
             };
-            ($input =~ /^stop\s+(\w+)$/) and do {
+            ($input =~ /^stop\s+([\w\-\_]+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "stop_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
@@ -431,7 +431,7 @@ sub console_input {
                 $cmd_processed = 1;
                 last SWITCH;
             };
-            ($input =~ /^info\s+(\w+)$/) and do {
+            ($input =~ /^info\s+([\w\-\_]+)$/) and do {
                 my $id = next_id(); 
                 $cmd = { "method" => "info_program", "params" => [ $1 ], "id" => $id };
                 $heap->{cmd_sent}->{$id} = $cmd;
@@ -453,7 +453,7 @@ sub console_input {
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
-            ($input =~ /^update\s+(\w+)\s+(\{.*\})$/) and do {
+            ($input =~ /^update\s+([\w\-\_]+)\s+(\{.*\})$/) and do {
                 $cmd_processed = 1;
                 my $id = next_id(); 
                 my $pname = $1;
@@ -469,7 +469,7 @@ sub console_input {
                 $heap->{cmd_sent}->{$id} = $cmd;
                 last SWITCH;
             };
-            ($input =~ /^remove\s+(\w+)$/) and do {
+            ($input =~ /^remove\s+([\w\-\_]+)$/) and do {
                 $cmd_processed = 1;
                 my $id = next_id(); 
                 $cmd = { "method" => "remove_program", "params" => [ $1 ], "id" => $id };

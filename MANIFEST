@@ -3,7 +3,7 @@ Makefile.PL
 MANIFEST
 README
 bin/safetynetd.pl
-bin/shellu.pl
+bin/safetynet-shell.pl
 bin/telnetu.pl
 etc/test.programs
 etc/test.rc
