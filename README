@@ -1,5 +1,5 @@
-Proc::Safetynet version 0.01
-============================
+Proc::Safetynet
+===============
 
 Proc::Safetynet is a utility framework for building programs that
 supervises or "babysits" other processes. Supervision tasks can include
